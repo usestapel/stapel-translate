@@ -155,7 +155,7 @@ class TestTranslationEntryModel:
         """Test that saving translation updates cache."""
         cache.clear()
 
-        entry = TranslationEntry.objects.create(
+        TranslationEntry.objects.create(
             key='test.cache',
             en='English text'
         )

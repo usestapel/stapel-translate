@@ -8,7 +8,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from drf_spectacular.types import OpenApiTypes as SpectacularTypes
 from stapel_core.django.openapi import BulkUpdateResponseSerializer, OpenApiTypes
 from stapel_core.django.errors import IronResponse, IronErrorResponse
-from stapel_core.django.errors import IronResponse, ERR_400_EXPECTED_LIST
+from stapel_core.django.errors import ERR_400_EXPECTED_LIST
 from stapel_core.django.revision import (
     RevisionPagination,
     RevisionViewSetMixin,
