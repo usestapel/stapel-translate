@@ -1,0 +1,207 @@
+import logging
+import uuid
+from django.core.cache import cache
+from django.db import models
+from django.forms.models import model_to_dict
+
+logger = logging.getLogger(__name__)
+
+from stapel_core.django.models import RevisionMixin
+from stapel_translate.utils import get_cache_key
+
+
+# Supported languages (20 total)
+SUPPORTED_LANGUAGES = [
+    'en',  # English
+    'lb',  # Luxembourgish
+    'fr',  # French
+    'de',  # German
+    'es',  # Spanish
+    'pt',  # Portuguese
+    'it',  # Italian
+    'ru',  # Russian
+    'uk',  # Ukrainian
+    'pl',  # Polish
+    'ar',  # Arabic
+    'hi',  # Hindi
+    'zh',  # Mandarin
+    'tr',  # Turkish
+    'ko',  # Korean
+    'ja',  # Japanese
+    'sr',  # Serbian
+    'hr',  # Croatian
+    'hu',  # Hungarian
+    'he',  # Hebrew
+]
+
+
+class AuthorizedTranslator(models.Model):
+    """Authorized translator allowed to access the dashboard."""
+    email = models.EmailField(unique=True, db_index=True)
+    name = models.CharField(max_length=255, blank=True, default='')
+    allowed_languages = models.JSONField(
+        default=list, blank=True,
+        help_text="List of language codes this translator can edit. Empty = all languages."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.email
+
+    class Meta:
+        verbose_name = "Authorized Translator"
+        verbose_name_plural = "Authorized Translators"
+
+
+class TranslationEntry(RevisionMixin, models.Model):
+    key = models.CharField(max_length=255, unique=True)
+    comment = models.TextField(blank=True, default='')
+    translator_comment = models.TextField(blank=True, default='', help_text="Notes from translator")
+    refs = models.JSONField(default=list, blank=True, help_text="Admin URLs referencing this key")
+    screenshot = models.FileField(upload_to='screenshots/', blank=True, null=True, help_text="Screenshot of Figma screen where this key is used")
+
+    # Language translations
+    en = models.CharField("English", blank=True, null=True)
+    lb = models.CharField("Luxembourgish", blank=True, null=True)
+    fr = models.CharField("French", blank=True, null=True)
+    de = models.CharField("German", blank=True, null=True)
+    es = models.CharField("Spanish", blank=True, null=True)
+    pt = models.CharField("Portuguese", blank=True, null=True)
+    it = models.CharField("Italian", blank=True, null=True)
+    ru = models.CharField("Russian", blank=True, null=True)
+    uk = models.CharField("Ukrainian", blank=True, null=True)
+    pl = models.CharField("Polish", blank=True, null=True)
+    ar = models.CharField("Arabic", blank=True, null=True)
+    hi = models.CharField("Hindi", blank=True, null=True)
+    zh = models.CharField("Mandarin", blank=True, null=True)
+    tr = models.CharField("Turkish", blank=True, null=True)
+    ko = models.CharField("Korean", blank=True, null=True)
+    ja = models.CharField("Japanese", blank=True, null=True)
+    sr = models.CharField("Serbian", blank=True, null=True)
+    hr = models.CharField("Croatian", blank=True, null=True)
+    hu = models.CharField("Hungarian", blank=True, null=True)
+    he = models.CharField("Hebrew", blank=True, null=True)
+
+    # Per-language verification status
+    en_verified = models.BooleanField("English verified", default=False)
+    lb_verified = models.BooleanField("Luxembourgish verified", default=False)
+    fr_verified = models.BooleanField("French verified", default=False)
+    de_verified = models.BooleanField("German verified", default=False)
+    es_verified = models.BooleanField("Spanish verified", default=False)
+    pt_verified = models.BooleanField("Portuguese verified", default=False)
+    it_verified = models.BooleanField("Italian verified", default=False)
+    ru_verified = models.BooleanField("Russian verified", default=False)
+    uk_verified = models.BooleanField("Ukrainian verified", default=False)
+    pl_verified = models.BooleanField("Polish verified", default=False)
+    ar_verified = models.BooleanField("Arabic verified", default=False)
+    hi_verified = models.BooleanField("Hindi verified", default=False)
+    zh_verified = models.BooleanField("Mandarin verified", default=False)
+    tr_verified = models.BooleanField("Turkish verified", default=False)
+    ko_verified = models.BooleanField("Korean verified", default=False)
+    ja_verified = models.BooleanField("Japanese verified", default=False)
+    sr_verified = models.BooleanField("Serbian verified", default=False)
+    hr_verified = models.BooleanField("Croatian verified", default=False)
+    hu_verified = models.BooleanField("Hungarian verified", default=False)
+    he_verified = models.BooleanField("Hebrew verified", default=False)
+
+    source = models.CharField(max_length=100, blank=True, default='')
+    order = models.IntegerField(null=True, blank=True, db_index=True)
+    llm_translated = models.BooleanField(default=False, help_text="Whether this translation was generated by LLM")
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.set(get_cache_key(self.key), self, timeout=None)
+        # Publish translations-changed event for notification keys
+        if self.source == 'backend:notifications':
+            self._publish_translations_changed()
+
+    def _publish_translations_changed(self):
+        """Publish a translations-changed Kafka event with all language values."""
+        try:
+            from stapel_core.kafka import publish_event, Event, EventType, TOPIC_TRANSLATIONS_CHANGED
+
+            values = {}
+            for lang in SUPPORTED_LANGUAGES:
+                val = getattr(self, lang, None)
+                if val:
+                    values[lang] = val
+
+            if not values:
+                return
+
+            event = Event(
+                event_type=EventType.TRANSLATIONS_CHANGED,
+                service="translate",
+                payload={
+                    "key": self.key,
+                    "values": values,
+                },
+            )
+            publish_event(TOPIC_TRANSLATIONS_CHANGED, event, key=self.key)
+        except Exception:
+            logger.exception(
+                "Failed to publish translations-changed event for key %s", self.key
+            )
+
+    def get(self, lang='en'):
+        return getattr(self, lang, None) or self.en or self.key
+
+    def as_dict(self):
+        d = model_to_dict(self)
+        keys = ['id', 'key']
+        return {k: d[k] for k in d.keys() - keys}
+
+    def __str__(self):
+        return f"{self.key} [{self.en or self.ru or 'no EN/RU'}]"
+
+    class Meta:
+        verbose_name = "Translation"
+        verbose_name_plural = "Translations"
+
+
+class TranslationHistory(models.Model):
+    """History of translation changes."""
+    CHANGE_TYPE_CHOICES = [
+        ('translation', 'Translation'),
+        ('verification', 'Verification'),
+    ]
+
+    entry = models.ForeignKey(
+        TranslationEntry,
+        on_delete=models.CASCADE,
+        related_name='history'
+    )
+    language = models.CharField(max_length=5)
+    change_type = models.CharField(max_length=20, choices=CHANGE_TYPE_CHOICES)
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+    author_email = models.EmailField(blank=True, null=True, db_index=True)
+    author_name = models.CharField(max_length=255, blank=True, default='')
+    source = models.CharField(max_length=50, default='dashboard')  # 'dashboard', 'admin', 'llm'
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        return f"{self.entry.key} [{self.language}] by {self.author_email or 'system'}"
+
+    class Meta:
+        verbose_name = "Translation History"
+        verbose_name_plural = "Translation History"
+        ordering = ['-created_at']
+
+
+class FigmaApiKey(models.Model):
+    """API key for Figma plugin authentication."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, help_text="Name to identify this key (e.g., 'Design Team')")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.name} ({str(self.id)[:8]}...)"
+
+    class Meta:
+        verbose_name = "Figma API Key"
+        verbose_name_plural = "Figma API Keys"

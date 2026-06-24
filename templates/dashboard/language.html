@@ -1,0 +1,451 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{{ lang_name }} Translations - Translator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .translation-card {
+        display: none;
+    }
+    .desktop-table {
+        overflow-x: auto;
+    }
+    .desktop-table thead th {
+        position: sticky;
+        top: 0;
+        background: var(--gray-50);
+        z-index: 2;
+    }
+    .ref-col-select {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.25rem;
+        border: 1px solid var(--gray-300);
+        border-radius: 0.25rem;
+        background: white;
+        cursor: pointer;
+    }
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .desktop-table table {
+            min-width: 700px;
+        }
+        .desktop-table th:last-child,
+        .desktop-table td:last-child {
+            position: sticky;
+            right: 0;
+            background: white;
+            z-index: 1;
+        }
+        .desktop-table thead th:last-child {
+            background: var(--gray-50);
+        }
+    }
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none !important;
+        }
+        .translation-card {
+            display: block;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .translation-card-key {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--gray-700);
+            word-break: break-all;
+            margin-bottom: 0.25rem;
+        }
+        .translation-card-value {
+            font-size: 0.8125rem;
+            color: var(--gray-900);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 0.25rem;
+        }
+        .translation-card-comment {
+            font-size: 0.6875rem;
+            color: var(--gray-500);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 0.5rem;
+        }
+        .translation-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .translation-card-meta {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+        .translation-card-source {
+            font-size: 0.625rem;
+            color: var(--gray-500);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .translation-card-actions {
+            display: flex;
+            gap: 0.25rem;
+            flex-shrink: 0;
+        }
+        .filters {
+            gap: 0.5rem !important;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 0;
+        }
+        .form-input, .form-select {
+            font-size: 0.8125rem !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="{% url 'dashboard-index' %}">Dashboard</a>
+    <span>/</span>
+    <span>{{ lang_name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-between align-center">
+    <h1 class="page-title">{{ lang_name }} <span class="badge badge-gray">{{ lang_code }}</span></h1>
+    <span class="badge badge-gray">{{ translations|length }} keys</span>
+</div>
+
+<div class="filters">
+    <div class="filter-group">
+        <label class="filter-label">Status:</label>
+        <select class="form-select" style="width: auto;" id="filter-verified" onchange="applyFilters()">
+            <option value="">All</option>
+            <option value="false" {% if verified_filter == 'false' %}selected{% endif %}>Unverified</option>
+            <option value="true" {% if verified_filter == 'true' %}selected{% endif %}>Verified</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Source:</label>
+        <select class="form-select" style="width: auto;" id="filter-source" onchange="applyFilters()">
+            <option value="">All sources</option>
+            {% for source in sources %}
+                <option value="{{ source }}" {% if source_filter == source %}selected{% endif %}>{{ source }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <input type="text" class="form-input" style="width: 200px;" placeholder="Search..."
+               id="filter-search" value="{{ search_filter }}">
+    </div>
+    <div class="filter-group">
+        <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="filter-no-refs" {% if no_refs_filter == 'true' %}checked{% endif %} onchange="applyFilters()">
+            <span class="filter-label" style="margin: 0;">No refs</span>
+        </label>
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Sort:</label>
+        <select class="form-select" style="width: auto;" id="filter-sort" onchange="applyFilters()">
+            <option value="default" {% if sort_filter == 'default' %}selected{% endif %}>Contextual</option>
+            <option value="id" {% if sort_filter == 'id' %}selected{% endif %}>By ID</option>
+            <option value="alpha" {% if sort_filter == 'alpha' %}selected{% endif %}>Alphabetical</option>
+            <option value="order" {% if sort_filter == 'order' %}selected{% endif %}>By Order &uarr;</option>
+            <option value="order_desc" {% if sort_filter == 'order_desc' %}selected{% endif %}>By Order &darr;</option>
+        </select>
+    </div>
+    <a href="{% url 'dashboard-language-page' lang_code %}" class="btn btn-secondary btn-sm">Clear</a>
+</div>
+
+{% if is_privileged and no_refs_filter == 'true' and translations|length > 0 %}
+<div style="margin-bottom: 1rem;">
+    <form id="delete-orphans-form" method="post" action="{% url 'dashboard-delete-orphans' %}" style="display: inline;">
+        {% csrf_token %}
+    </form>
+    <button type="button" class="btn" style="background: var(--danger); color: white;"
+            onclick="confirmDeleteOrphans({{ translations|length }})">
+        Delete All Orphans ({{ translations|length }})
+    </button>
+</div>
+{% endif %}
+
+<!-- Desktop Table -->
+<div class="card desktop-table">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 35%;">
+                    <select class="ref-col-select" id="ref-col-select" onchange="changeRefCol(this.value)">
+                        {% for opt in ref_options %}
+                        <option value="{{ opt.value }}" {% if ref_col == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                        {% endfor %}
+                    </select>
+                </th>
+                <th style="width: 30%;">Translation</th>
+                <th style="width: 10%;">Source</th>
+                <th style="width: 10%;">Status</th>
+                <th style="width: 15%;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in translations %}
+            <tr>
+                <td>
+                    <div class="{% if ref_col == 'key' %}translation-key{% endif %}" title="{{ item.key }}">{{ item.ref_value }}</div>
+                    {% if ref_col == 'key' and item.comment %}
+                    <div class="text-muted mt-1" style="font-size: 0.75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="{{ item.comment }}">{{ item.comment }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="translation-value" title="{{ item.value }}">
+                        {% if item.value %}
+                            {{ item.value }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <span class="text-muted" style="font-size: 0.75rem;">{{ item.source|default:"—" }}</span>
+                </td>
+                <td>
+                    {% if item.verified %}
+                        <span class="badge badge-success">Verified</span>
+                    {% else %}
+                        <span class="badge badge-warning">Pending</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'dashboard-translation-page' item.id %}?lang={{ lang_code }}{% if verified_filter %}&verified={{ verified_filter }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if sort_filter and sort_filter != 'default' %}&sort={{ sort_filter }}{% endif %}"
+                           class="btn btn-primary btn-sm">Edit</a>
+                        {% if item.verified %}
+                        <button type="button" class="btn btn-sm" style="background: var(--warning); color: white; padding: 0.25rem 0.5rem;"
+                                onclick="toggleVerify({{ item.id }}, false)" title="Unverify">✗</button>
+                        {% else %}
+                        <button type="button" class="btn btn-sm" style="background: var(--success); color: white; padding: 0.25rem 0.5rem;"
+                                onclick="toggleVerify({{ item.id }}, true)" title="Verify">✓</button>
+                        {% endif %}
+                        {% if is_privileged %}
+                        <button type="button" class="btn btn-sm" style="background: var(--danger); color: white; padding: 0.25rem 0.5rem;"
+                                onclick="confirmDelete({{ item.id }}, '{{ item.key|escapejs }}')">×</button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="empty-state">
+                    No translations found matching your filters
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Mobile Cards -->
+{% for item in translations %}
+<div class="translation-card">
+    <div class="translation-card-key">{{ item.key }}</div>
+    <div class="translation-card-value" title="{{ item.value }}">
+        {% if item.value %}{{ item.value }}{% else %}<span class="text-muted">—</span>{% endif %}
+    </div>
+    {% if item.comment %}
+    <div class="translation-card-comment" title="{{ item.comment }}">{{ item.comment }}</div>
+    {% endif %}
+    <div class="translation-card-footer">
+        <div class="translation-card-meta">
+            {% if item.verified %}
+                <span class="badge badge-success">Verified</span>
+            {% else %}
+                <span class="badge badge-warning">Pending</span>
+            {% endif %}
+            <span class="translation-card-source">{{ item.source|default:"—" }}</span>
+        </div>
+        <div class="translation-card-actions">
+            <a href="{% url 'dashboard-translation-page' item.id %}?lang={{ lang_code }}{% if verified_filter %}&verified={{ verified_filter }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if sort_filter and sort_filter != 'default' %}&sort={{ sort_filter }}{% endif %}"
+               class="btn btn-primary btn-sm">Edit</a>
+            {% if item.verified %}
+            <button type="button" class="btn btn-sm" style="background: var(--warning); color: white; padding: 0.25rem 0.5rem;"
+                    onclick="toggleVerify({{ item.id }}, false)" title="Unverify">✗</button>
+            {% else %}
+            <button type="button" class="btn btn-sm" style="background: var(--success); color: white; padding: 0.25rem 0.5rem;"
+                    onclick="toggleVerify({{ item.id }}, true)" title="Verify">✓</button>
+            {% endif %}
+            {% if is_privileged %}
+            <button type="button" class="btn btn-sm" style="background: var(--danger); color: white; padding: 0.25rem 0.5rem;"
+                    onclick="confirmDelete({{ item.id }}, '{{ item.key|escapejs }}')">×</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% empty %}
+<div class="translation-card empty-state">
+    No translations found matching your filters
+</div>
+{% endfor %}
+
+{% if is_privileged %}
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 0.5rem; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; font-size: 1.125rem;">Delete Translation</span>
+            <button onclick="closeDeleteModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray-500);">&times;</button>
+        </div>
+        <div style="padding: 1.25rem;">
+            <p>Are you sure you want to delete this translation?</p>
+            <p class="translation-key" id="delete-key-display" style="margin-top: 0.5rem; font-size: 0.875rem;"></p>
+            <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.5rem;">This action cannot be undone.</p>
+        </div>
+        <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--gray-200); display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <button type="button" class="btn" style="background: var(--danger); color: white;" onclick="deleteTranslation()">Delete</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const langCode = '{{ lang_code }}';
+let deleteId = null;
+let searchTimeout = null;
+
+async function toggleVerify(id, verified) {
+    try {
+        const response = await fetch(`/translate/api/dashboard/translations/${id}/verify/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({ lang: langCode, verified }),
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Failed to update verification');
+        }
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
+
+function changeRefCol(value) {
+    const url = new URL(window.location.href);
+    if (value && value !== 'key') url.searchParams.set('ref', value);
+    else url.searchParams.delete('ref');
+    window.location.href = url.toString();
+}
+
+function applyFilters() {
+    const url = new URL(window.location.href);
+    const verified = document.getElementById('filter-verified').value;
+    const source = document.getElementById('filter-source').value;
+    const search = document.getElementById('filter-search').value;
+    const noRefs = document.getElementById('filter-no-refs').checked;
+    const sort = document.getElementById('filter-sort').value;
+
+    if (verified) url.searchParams.set('verified', verified);
+    else url.searchParams.delete('verified');
+
+    if (source) url.searchParams.set('source', source);
+    else url.searchParams.delete('source');
+
+    if (search) url.searchParams.set('search', search);
+    else url.searchParams.delete('search');
+
+    if (noRefs) url.searchParams.set('no_refs', 'true');
+    else url.searchParams.delete('no_refs');
+
+    if (sort && sort !== 'default') url.searchParams.set('sort', sort);
+    else url.searchParams.delete('sort');
+
+    // Preserve ref column selection
+    const ref = document.getElementById('ref-col-select').value;
+    if (ref && ref !== 'key') url.searchParams.set('ref', ref);
+    else url.searchParams.delete('ref');
+
+    window.location.href = url.toString();
+}
+
+// Live search with debounce
+document.getElementById('filter-search').addEventListener('input', function(e) {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 1500);
+});
+
+document.getElementById('filter-search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        if (searchTimeout) clearTimeout(searchTimeout);
+        applyFilters();
+    }
+});
+
+{% if is_privileged %}
+function confirmDelete(id, key) {
+    deleteId = id;
+    document.getElementById('delete-key-display').textContent = key;
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+    deleteId = null;
+}
+
+async function deleteTranslation() {
+    if (!deleteId) return;
+
+    try {
+        const response = await fetch(`/translate/api/dashboard/translations/${deleteId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'include',
+        });
+
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Failed to delete translation');
+        }
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDeleteModal();
+});
+
+document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+
+function confirmDeleteOrphans(count) {
+    if (confirm(`This will soft-delete all ${count} translations with no refs. This action cannot be undone.\n\nProceed?`)) {
+        document.getElementById('delete-orphans-form').submit();
+    }
+}
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,390 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Dashboard - Translator{% endblock %}
+{% block extra_css %}
+{% if is_privileged %}
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal {
+        background: white;
+        border-radius: 0.5rem;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-title {
+        font-weight: 600;
+        font-size: 1.125rem;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--gray-500);
+        line-height: 1;
+    }
+    .modal-close:hover {
+        color: var(--gray-700);
+    }
+    .modal-body {
+        padding: 1.25rem;
+    }
+    .modal-footer {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--gray-200);
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    .checkbox-group,
+    .radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .checkbox-label,
+    .radio-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+    .checkbox-label input,
+    .radio-label input {
+        width: 1rem;
+        height: 1rem;
+    }
+    .section-title {
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+    }
+    .form-section {
+        margin-bottom: 1rem;
+    }
+</style>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-between align-center">
+    <div>
+        <h1 class="page-title">Translation Statistics</h1>
+        <p class="page-subtitle">
+            Overview of translation progress across all languages
+        </p>
+    </div>
+    {% if is_privileged %}
+    <div class="d-flex" style="gap: 0.5rem">
+        <form method="post" action="{% url 'dashboard-collect-keys' %}" style="display: inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary"
+                onclick="return confirm('Collect error and notification keys from all services?')">
+                Collect
+            </button>
+        </form>
+        <button class="btn btn-secondary" onclick="openExportModal()">
+            Export
+        </button>
+        <button class="btn btn-secondary" onclick="openImportModal()">
+            Import
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="filters mb-4">
+    <div class="filter-group">
+        <label class="filter-label">Source:</label>
+        <select
+            class="form-select"
+            style="width: auto"
+            onchange="filterBySource(this.value)"
+        >
+            <option value="">All sources</option>
+            {% for source in sources %}
+            <option
+                value="{{ source }}"
+                {% if current_source == source %}selected{% endif %}
+            >
+                {{ source }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <span class="text-muted"
+            >Total entries: <strong>{{ total_entries }}</strong></span
+        >
+    </div>
+</div>
+
+<div class="stats-grid">
+    {% for lang in languages %}
+    <a
+        href="{% url 'dashboard-language-page' lang.lang %}{% if current_source %}?source={{ current_source }}{% endif %}"
+        class="stat-card"
+        style="text-decoration: none; color: inherit"
+    >
+        <div class="stat-lang">
+            {{ lang.name }}
+            <span
+                class="badge {% if lang.unverified == 0 %}badge-success{% else %}badge-warning{% endif %}"
+                style="margin-left: 0.5rem"
+            >
+                {{ lang.lang }}
+            </span>
+        </div>
+        <div class="stat-numbers">
+            <span class="text-success">{{ lang.verified }} verified</span>
+            <span class="text-warning">{{ lang.unverified }} unverified</span>
+        </div>
+        <div class="progress-bar-stacked">
+            {% if lang.translated > 0 %}
+            <div
+                class="progress-verified"
+                style="width: {% widthratio lang.verified lang.translated 100 %}%;"
+            ></div>
+            <div
+                class="progress-unverified"
+                style="width: {% widthratio lang.unverified lang.translated 100 %}%;"
+            ></div>
+            {% endif %}
+        </div>
+        <div class="mt-2 text-muted" style="font-size: 0.75rem">
+            {{ lang.translated }}/{{ lang.total }} translated {% if lang.missing > 0 %}<span class="text-danger"> ({{ lang.missing }} missing)</span>{% endif %}
+        </div>
+    </a>
+    {% empty %}
+    <div class="empty-state">
+        <p>No translations found</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% if is_privileged %}
+<!-- Export Modal -->
+<div class="modal-overlay" id="export-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">Export Translations</span>
+            <button class="modal-close" onclick="closeExportModal()">
+                &times;
+            </button>
+        </div>
+        <form
+            method="post"
+            action="{% url 'dashboard-export' %}"
+            target="_blank"
+            onsubmit="handleExportSubmit()"
+        >
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-section">
+                    <div class="section-title">Sources to include:</div>
+                    <div class="checkbox-group">
+                        {% for source in sources %}
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                name="sources"
+                                value="{{ source }}"
+                                checked
+                            />
+                            {{ source }}
+                        </label>
+                        {% empty %}
+                        <span class="text-muted">No sources available</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">Format:</div>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input
+                                type="radio"
+                                name="format"
+                                value="json"
+                                checked
+                            />
+                            i18n JSON (translations/en.json)
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="format" value="xml" />
+                            Android XML (res/values-en/strings.xml)
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="format" value="fixture" />
+                            Django Fixture JSON (for import/backup)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="closeExportModal()"
+                >
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    Download ZIP
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Import Modal -->
+<div class="modal-overlay" id="import-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">Import Translations</span>
+            <button class="modal-close" onclick="closeImportModal()">
+                &times;
+            </button>
+        </div>
+        <form
+            method="post"
+            action="{% url 'dashboard-import' %}"
+            enctype="multipart/form-data"
+        >
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-section">
+                    <div class="section-title">Django Fixture JSON file:</div>
+                    <input
+                        type="file"
+                        name="fixture_file"
+                        accept=".json"
+                        required
+                        style="
+                            width: 100%;
+                            padding: 8px;
+                            border: 1px solid #ddd;
+                            border-radius: 4px;
+                            font-size: 0.875rem;
+                        "
+                    />
+                    <p
+                        class="text-muted"
+                        style="font-size: 0.75rem; margin-top: 0.5rem"
+                    >
+                        Upload a fixture file previously exported with "Django
+                        Fixture JSON" format. Entries are matched by key.
+                        Existing entries will be updated.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="closeImportModal()"
+                >
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endif %}
+
+<script>
+    function filterBySource(source) {
+        const url = new URL(window.location.href);
+        if (source) {
+            url.searchParams.set('source', source);
+        } else {
+            url.searchParams.delete('source');
+        }
+        window.location.href = url.toString();
+    }
+
+    {% if is_privileged %}
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    function refreshCsrfToken() {
+        const csrfToken = getCookie('csrftoken');
+        if (csrfToken) {
+            const input = document.querySelector('#export-modal input[name="csrfmiddlewaretoken"]');
+            if (input) input.value = csrfToken;
+        }
+    }
+
+    function openExportModal() {
+        refreshCsrfToken();
+        document.getElementById('export-modal').classList.add('active');
+    }
+
+    function closeExportModal() {
+        document.getElementById('export-modal').classList.remove('active');
+    }
+
+    function handleExportSubmit() {
+        setTimeout(function() {
+            closeExportModal();
+            refreshCsrfToken();
+        }, 100);
+    }
+
+    function openImportModal() {
+        refreshCsrfToken();
+        document.getElementById('import-modal').classList.add('active');
+    }
+
+    function closeImportModal() {
+        document.getElementById('import-modal').classList.remove('active');
+    }
+
+    }
+
+    // Close modals on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeExportModal();
+            closeImportModal();
+        }
+    });
+
+    // Close modals on overlay click
+    document.getElementById('export-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeExportModal();
+    });
+    document.getElementById('import-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeImportModal();
+    });
+    {% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Translator Dashboard</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 1rem;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid var(--gray-200);
+            padding: 2rem;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+        }
+
+        .login-email {
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.375rem;
+            color: var(--gray-700);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            font-size: 1rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.375rem;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-input.code-input {
+            font-size: 1.5rem;
+            text-align: center;
+            letter-spacing: 0.5em;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 0.375rem;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+            margin-top: 0.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-50);
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            {% if no_access %}
+            <!-- No Access -->
+            <div id="step-no-access">
+                <div class="login-header">
+                    <h1 class="login-title">Access Denied</h1>
+                    <p class="login-subtitle">Sorry, you don't have permission to access the Translator Dashboard. Please contact an administrator if you believe this is a mistake.</p>
+                </div>
+
+                <button type="button" class="btn btn-primary" onclick="logoutAndSwitch()">
+                    Login with a Different Account
+                </button>
+            </div>
+            {% else %}
+            <!-- Step 1: Email -->
+            <div id="step-email">
+                <div class="login-header">
+                    <h1 class="login-title">Translator Dashboard</h1>
+                    <p class="login-subtitle">Enter your email to receive a verification code</p>
+                </div>
+
+                <div id="error-email" class="error-message hidden"></div>
+
+                <form id="form-email" onsubmit="requestOtp(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email Address</label>
+                        <input type="email" name="email" id="email" class="form-input"
+                               placeholder="your@email.com" required autofocus>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="btn-email">
+                        Send Verification Code
+                    </button>
+                </form>
+            </div>
+
+            <!-- Step 2: OTP -->
+            <div id="step-otp" class="hidden">
+                <div class="login-header">
+                    <h1 class="login-title">Enter Verification Code</h1>
+                    <p class="login-subtitle">
+                        We sent a code to<br>
+                        <span class="login-email" id="display-email"></span>
+                    </p>
+                </div>
+
+                <div id="error-otp" class="error-message hidden"></div>
+
+                <form id="form-otp" onsubmit="verifyOtp(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="code">Verification Code</label>
+                        <input type="text" name="code" id="code" class="form-input code-input"
+                               maxlength="4" pattern="[0-9]*"
+                               inputmode="numeric" autocomplete="one-time-code" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="btn-otp">
+                        Verify & Login
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="backToEmail()">
+                        Use Different Email
+                    </button>
+                </form>
+
+                <div id="staff-login-hint" class="hidden" style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                    <p style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Staff member?</p>
+                    <a href="/auth/admin/login?next={% url 'dashboard-index' %}" style="font-size: 0.875rem; color: var(--primary); text-decoration: none;">
+                        Login via admin →
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+    async function logoutAndSwitch() {
+        try {
+            await fetch('/auth/api/logout/', {
+                method: 'GET',
+                credentials: 'include',
+            });
+        } catch (err) {
+            // ignore
+        }
+        window.location.href = '{% url "dashboard-login" %}';
+    }
+
+    let currentEmail = '';
+
+    async function requestOtp(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const btn = document.getElementById('btn-email');
+        const errorDiv = document.getElementById('error-email');
+
+        errorDiv.classList.add('hidden');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>Sending...';
+
+        try {
+            const response = await fetch('/auth/api/email/request/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: email }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                currentEmail = email;
+                document.getElementById('display-email').textContent = email;
+                document.getElementById('step-email').classList.add('hidden');
+                document.getElementById('step-otp').classList.remove('hidden');
+                document.getElementById('code').focus();
+            } else {
+                errorDiv.textContent = data.error || 'Failed to send verification code';
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (err) {
+            errorDiv.textContent = 'Network error. Please try again.';
+            errorDiv.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Send Verification Code';
+        }
+    }
+
+    async function verifyOtp(e) {
+        e.preventDefault();
+
+        const code = document.getElementById('code').value.trim();
+        const btn = document.getElementById('btn-otp');
+        const errorDiv = document.getElementById('error-otp');
+
+        errorDiv.classList.add('hidden');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>Verifying...';
+
+        try {
+            const response = await fetch('/auth/api/email/verify/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: currentEmail, code: code }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.status !== 'REJECTED') {
+                // Success - cookies are set by auth service, redirect to dashboard
+                window.location.href = '{% url "dashboard-index" %}';
+            } else {
+                errorDiv.textContent = data.error || 'Invalid verification code';
+                errorDiv.classList.remove('hidden');
+                document.getElementById('code').value = '';
+                document.getElementById('code').focus();
+                // Show staff login hint on OTP error (for superusers who don't have OTP)
+                document.getElementById('staff-login-hint').classList.remove('hidden');
+            }
+        } catch (err) {
+            errorDiv.textContent = 'Network error. Please try again.';
+            errorDiv.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Verify & Login';
+        }
+    }
+
+    function backToEmail() {
+        document.getElementById('step-otp').classList.add('hidden');
+        document.getElementById('step-email').classList.remove('hidden');
+        document.getElementById('error-otp').classList.add('hidden');
+        document.getElementById('staff-login-hint').classList.add('hidden');
+        document.getElementById('code').value = '';
+        document.getElementById('email').focus();
+    }
+    </script>
+</body>
+</html>
