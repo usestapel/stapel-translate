@@ -26,7 +26,7 @@ all = ["stapel-translate[kafka]"]
 
 [tool.setuptools]
 package-dir = {"stapel_translate" = "."}
-packages = ["stapel_translate", "stapel_translate.migrations"]
+packages = ["stapel_translate", "stapel_translate.migrations", "stapel_translate.tests"]
 
 [tool.setuptools.package-data]
 stapel_translate = ["migrations/*.py", "migrations/**/*.py"]
