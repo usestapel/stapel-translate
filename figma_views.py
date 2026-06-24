@@ -318,7 +318,7 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
                 screen_line = f'Screen: {screen_name}'
                 existing_lines = (existing.comment or '').split('\n')
                 if screen_line not in existing_lines:
-                    existing_lines = [l for l in existing_lines if l]  # drop empty
+                    existing_lines = [line for line in existing_lines if line]  # drop empty
                     existing_lines.append(screen_line)
                     existing.comment = '\n'.join(existing_lines)
                     if 'comment' not in metadata_fields:
@@ -531,7 +531,7 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, APIView):
             screen_line = f'Screen: {screen_name}'
             existing_lines = (entry.comment or '').split('\n')
             if screen_line not in existing_lines:
-                existing_lines = [l for l in existing_lines if l]
+                existing_lines = [line for line in existing_lines if line]
                 existing_lines.append(screen_line)
                 entry.comment = '\n'.join(existing_lines)
                 if 'comment' not in update_fields:
@@ -610,15 +610,15 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, APIView):
 
         # Build all translations dict
         all_translations = {}
-        for l in SUPPORTED_LANGUAGES:
-            v = getattr(entry, l, None)
+        for lang in SUPPORTED_LANGUAGES:
+            v = getattr(entry, lang, None)
             if v:
-                all_translations[l] = v
+                all_translations[lang] = v
 
         # Build verification status for all languages
         verification_status = {}
-        for l in SUPPORTED_LANGUAGES:
-            verification_status[l] = getattr(entry, f'{l}_verified', False)
+        for lang in SUPPORTED_LANGUAGES:
+            verification_status[lang] = getattr(entry, f'{lang}_verified', False)
 
         dto = FigmaTranslationDetailResponse(
             id=entry.id,
@@ -841,7 +841,7 @@ class FigmaRemoveRefView(FigmaApiKeyAuthentication, APIView):
         if screen_name and entry.comment:
             screen_line = f'Screen: {screen_name}'
             lines = entry.comment.split('\n')
-            new_lines = [l for l in lines if l != screen_line]
+            new_lines = [line for line in lines if line != screen_line]
             if len(new_lines) != len(lines):
                 entry.comment = '\n'.join(new_lines)
                 if 'comment' not in update_fields:

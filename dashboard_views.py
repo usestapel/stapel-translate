@@ -456,7 +456,7 @@ class TranslationNavigationView(APIView):
     )
     def get(self, request, pk):
         try:
-            entry = TranslationEntry.objects.get(pk=pk, deleted=False)
+            TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
             return IronResponse(
                 {'error': 'Translation not found'},
@@ -846,7 +846,7 @@ class DashboardIndexPageView(AuthorizedTranslatorMixin, View):
         allowed_languages = get_user_allowed_languages(request.user)
         display_languages = SUPPORTED_LANGUAGES
         if allowed_languages is not None:
-            display_languages = [l for l in SUPPORTED_LANGUAGES if l in allowed_languages]
+            display_languages = [lang for lang in SUPPORTED_LANGUAGES if lang in allowed_languages]
 
         languages_stats = []
         for lang in display_languages:
@@ -1177,7 +1177,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
                 source='manual',
             )
 
-        messages.success(request, f'Translation saved successfully.')
+        messages.success(request, 'Translation saved successfully.')
 
         # Redirect: auto-advance to next entry or stay on current
         target_pk = advance_pk or pk
