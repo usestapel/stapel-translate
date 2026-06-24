@@ -1,0 +1,58 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+<div class="object-tools">
+  <ul>
+    <li>
+      <button type="button" class="button" onclick="checkLlmStatus()">LLM Status</button>
+      <span id="llm-status-text" style="margin-left: 8px; font-size: 12px;"></span>
+    </li>
+    <li>
+      <form method="post" action="{% url 'admin:collect_translation_keys' %}" style="display:inline-block;"
+            onsubmit="return confirm('Collect error and notification keys from all services?');">
+        {% csrf_token %}
+        <button type="submit" class="button">Collect keys</button>
+      </form>
+    </li>
+    <li>
+      <form method="post" action="{% url 'admin:set_translation_lang' %}" style="display:inline-block;">
+        {% csrf_token %}
+        <label for="lang-selector" style="margin-right: 8px;">Language:</label>
+        <select id="lang-selector" name="language" onchange="this.form.submit()">
+          {% for code, name in languages %}
+          <option value="{{ code }}" {% if code == current_language %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </li>
+  </ul>
+</div>
+{{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+function checkLlmStatus() {
+    fetch('llm_status/')
+        .then(response => response.json())
+        .then(data => {
+            const statusEl = document.getElementById('llm-status-text');
+            if (data.status === 'running') {
+                statusEl.innerHTML = `<span style="color: orange;">⏳ Running: ${data.completed}/${data.total} (${data.translated} ok, ${data.errors} errors)</span>`;
+                // Auto-refresh while running
+                setTimeout(checkLlmStatus, 3000);
+            } else if (data.status === 'completed') {
+                statusEl.innerHTML = `<span style="color: green;">✓ Done: ${data.translated} translated, ${data.errors} errors</span>`;
+            } else {
+                statusEl.innerHTML = `<span style="color: gray;">Idle</span>`;
+            }
+        })
+        .catch(err => {
+            document.getElementById('llm-status-text').innerHTML = `<span style="color: red;">Error: ${err}</span>`;
+        });
+}
+// Check status on page load
+document.addEventListener('DOMContentLoaded', checkLlmStatus);
+</script>
+{% endblock %}

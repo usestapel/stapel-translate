@@ -1,0 +1,952 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{{ translation.key }} - Translator{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Tighter vertical spacing for translation page */
+    .container { padding-top: 0.75rem; padding-bottom: 1rem; }
+    .breadcrumb { margin-bottom: 0.375rem; }
+    .page-header { margin-bottom: 0.375rem; }
+    .form-group { margin-bottom: 0.5rem; }
+    .card-body { padding: 0.75rem 1.25rem; }
+    .card-header { padding: 0.625rem 1.25rem; }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal {
+        background: white;
+        border-radius: 0.5rem;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-title {
+        font-weight: 600;
+        font-size: 1.125rem;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--gray-500);
+        line-height: 1;
+    }
+    .modal-close:hover {
+        color: var(--gray-700);
+    }
+    .modal-body {
+        padding: 1.25rem;
+    }
+    .modal-footer {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--gray-200);
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .llm-result {
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+    }
+    .llm-result-lang {
+        font-weight: 500;
+        color: var(--gray-700);
+        margin-bottom: 0.25rem;
+    }
+    .llm-result-text {
+        color: var(--gray-900);
+    }
+    .llm-all-results {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .trans-row {
+        display: flex;
+        align-items: baseline;
+        gap: 0.375rem;
+        padding: 0.25rem 0.5rem;
+        border-bottom: 1px solid var(--gray-100);
+        font-size: 0.75rem;
+        line-height: 1.3;
+    }
+    .trans-row:hover {
+        background: var(--gray-50);
+    }
+    .trans-row .badge {
+        font-size: 0.625rem;
+        padding: 0.0625rem 0.25rem;
+        flex-shrink: 0;
+    }
+    .trans-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--gray-700);
+    }
+    .trans-text:hover {
+        white-space: normal;
+        word-break: break-word;
+    }
+    .comment-box {
+        margin-top: 0.25rem;
+        line-height: 1.3;
+        font-size: 0.75rem;
+        color: var(--gray-600);
+        white-space: pre-wrap;
+        max-height: 150px;
+        overflow-y: auto;
+        background: var(--gray-50);
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        border: 1px solid var(--gray-200);
+    }
+    .refs-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.25rem;
+    }
+    .ref-link {
+        font-size: 0.625rem;
+        padding: 0.125rem 0.375rem;
+        background: var(--gray-100);
+        border-radius: 0.25rem;
+        color: var(--primary);
+        text-decoration: none;
+    }
+    .ref-link:hover {
+        background: var(--gray-200);
+    }
+    .translator-comment-area {
+        width: 100%;
+        min-height: 60px;
+        padding: 0.5rem;
+        font-size: 0.75rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 0.375rem;
+        resize: vertical;
+    }
+    .translator-comment-area:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+    .save-status {
+        font-size: 0.625rem;
+        color: var(--gray-500);
+        margin-left: 0.5rem;
+    }
+    .save-status.saving {
+        color: var(--warning);
+    }
+    .save-status.saved {
+        color: var(--success);
+    }
+    .save-status.error {
+        color: var(--danger);
+    }
+    .source-picker {
+        padding: 0.125rem 0.5rem;
+        font-size: 0.75rem;
+        width: auto;
+        min-width: 150px;
+    }
+    .lang-tabs-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0.5rem 0;
+    }
+    .lang-tabs-wrap .lang-tab {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        margin: 0;
+    }
+    .page-header-row {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .screenshot-sidebar {
+        flex-shrink: 0;
+        width: 200px;
+        border-radius: 0.375rem;
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+        cursor: pointer;
+        background: var(--gray-50);
+        align-self: stretch;
+        display: none;
+    }
+    .screenshot-sidebar img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .screenshot-sidebar:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.15);
+    }
+    .screenshot-thumb {
+        flex-shrink: 0;
+        width: 100px;
+        height: 115px;
+        border-radius: 0.375rem;
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+        cursor: pointer;
+        background: var(--gray-50);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .screenshot-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .screenshot-thumb:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.15);
+    }
+    .header-with-thumb {
+        display: flex;
+        gap: 0.75rem;
+    }
+    @media (min-width: 900px) {
+        .screenshot-sidebar { display: block; }
+        .screenshot-thumb { display: none; }
+    }
+    .screenshot-lightbox {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+    .screenshot-lightbox.active {
+        display: flex;
+    }
+    .screenshot-lightbox img {
+        max-width: 90vw;
+        max-height: 90vh;
+        border-radius: 0.5rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    .screenshot-lightbox-close {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.9);
+        border: none;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        cursor: pointer;
+        color: var(--gray-700);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2001;
+    }
+    .screenshot-lightbox-close:hover {
+        background: white;
+        color: var(--gray-900);
+    }
+    .action-bar {
+        display: flex;
+        gap: 0.375rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .action-bar .btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8125rem;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+    .context-key {
+        margin-top: 0.375rem;
+        font-family: monospace;
+        font-size: 0.75rem;
+        word-break: break-all;
+        background: var(--gray-50);
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        border: 1px solid var(--gray-200);
+        color: var(--gray-700);
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb" style="flex-wrap: wrap; align-items: center;">
+    <a href="{% url 'dashboard-index' %}">Dashboard</a>
+    <span>/</span>
+    <a href="{% url 'dashboard-language-page' current_lang %}{% if filters %}?{{ filters }}{% endif %}">{{ current_lang_name }}</a>
+    <span>/</span>
+    <span>Edit</span>
+    <span style="margin-left: auto;"></span>
+    <select class="form-select source-picker" style="margin-left: 0.5rem;" onchange="changeSourceFilter(this.value)">
+        <option value="">All sources</option>
+        {% for src in sources %}
+        <option value="{{ src }}" {% if src == source_filter %}selected{% endif %}>{{ src }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex gap-3" style="flex-wrap: wrap; margin-top: 0.375rem;">
+    <!-- Screenshot sidebar (desktop only) -->
+    {% if translation.screenshot %}
+    <div class="screenshot-sidebar" onclick="openScreenshot()">
+        <img src="{{ translation.screenshot.url }}" alt="Screenshot">
+    </div>
+    {% endif %}
+
+    <!-- Center: Header + Edit -->
+    <div style="flex: 1; min-width: 280px;">
+        <!-- Header block -->
+        <div style="margin-bottom: 0.375rem;">
+            <div class="d-flex justify-between align-center">
+                <span class="text-muted" style="font-size: 0.75rem;">{{ current_position }} / {{ total_count }}</span>
+                {% if is_privileged %}
+                <button type="button" class="btn btn-sm" style="background: var(--danger); color: white;" onclick="openDeleteModal()">Delete</button>
+                {% endif %}
+            </div>
+
+            <div class="header-with-thumb">
+                {% if translation.screenshot %}
+                <div class="screenshot-thumb" onclick="openScreenshot()">
+                    <img src="{{ translation.screenshot.url }}" alt="Screenshot">
+                </div>
+                {% endif %}
+                <div style="flex: 1; min-width: 0;">
+                    <details style="margin-top: 0.25rem;">
+                        <summary style="cursor: pointer; font-size: 0.75rem; color: var(--gray-600); user-select: none;">
+                            Context
+                            {% if translation.refs %}
+                                <span class="badge badge-gray" style="font-size: 0.625rem;">{{ translation.refs|length }} ref{{ translation.refs|length|pluralize }}</span>
+                            {% endif %}
+                            {% if translation.source %}
+                                <span class="badge badge-gray" style="font-size: 0.625rem;">{{ translation.source }}</span>
+                            {% endif %}
+                        </summary>
+                        <div style="margin-top: 0.25rem;">
+                            <div class="context-key">{{ translation.key }}</div>
+                            {% if translation.refs %}
+                            <div class="refs-list" style="margin-top: 0.25rem;">
+                                {% for ref in translation.refs %}
+                                {% if is_privileged %}
+                                <a href="{{ ref }}" target="_blank" class="btn btn-sm" style="font-size: 0.625rem; padding: 0.25rem 0.5rem;">{{ ref }}</a>
+                                {% else %}
+                                <span class="ref-link">{{ ref }}</span>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if translation.comment %}
+                            <div class="comment-box" style="margin-top: 0.25rem;">{{ translation.comment }}</div>
+                            {% endif %}
+                        </div>
+                    </details>
+
+                    <div style="margin-top: 0.25rem;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.125rem;">
+                            Translator Notes
+                            <span class="save-status" id="comment-save-status"></span>
+                        </label>
+                        <textarea class="translator-comment-area" id="translator-comment"
+                                  placeholder="Add notes for other translators...">{{ translation.translator_comment|default:"" }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-between align-center{% if show_lang_tabs %} mb-2{% endif %}">
+                    <span>Edit Translation</span>
+                    {% if not show_lang_tabs %}
+                    <span class="badge badge-gray">{{ current_lang_name }}</span>
+                    {% endif %}
+                </div>
+                {% if show_lang_tabs %}
+                <div class="lang-tabs-wrap">
+                    {% for lang in languages %}
+                    <a href="{% url 'dashboard-translation-page' translation.id %}?lang={{ lang.code }}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if verified_filter %}&verified={{ verified_filter }}{% endif %}{% if sort_filter and sort_filter != 'default' %}&sort={{ sort_filter }}{% endif %}"
+                       class="lang-tab {% if lang.code == current_lang %}active{% endif %}">
+                        {{ lang.code }}
+                        {% if lang.verified %}
+                        <span style="color: {% if lang.code == current_lang %}white{% else %}var(--success){% endif %};">&#10003;</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="post" id="translation-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="lang" value="{{ current_lang }}">
+
+                    <div class="form-group">
+                        <label class="form-label">{{ current_lang_name }} ({{ current_lang }})</label>
+                        <textarea name="value" class="form-textarea" id="translation-value"
+                                  placeholder="Enter translation...">{{ current_value }}</textarea>
+                    </div>
+
+                    <div class="action-bar">
+                        {% if prev_id %}
+                        <a href="{% url 'dashboard-translation-page' prev_id %}?lang={{ current_lang }}{% if filters %}&{{ filters }}{% endif %}" class="btn btn-secondary nav-prev" title="{{ prev_key }}">&larr;</a>
+                        {% endif %}
+                        <button type="submit" name="action" value="save" class="btn btn-primary">Save</button>
+                        {% if not current_verified %}
+                        <button type="submit" name="action" value="save_verify" class="btn btn-success">Verify</button>
+                        {% if next_id %}
+                        <button type="submit" name="action" value="save_verify_next" class="btn btn-success">Verify &rarr;</button>
+                        {% endif %}
+                        {% else %}
+                        <button type="submit" name="action" value="save_unverify" class="btn btn-secondary">Unverify</button>
+                        {% endif %}
+                        {% if next_id %}
+                        <a href="{% url 'dashboard-translation-page' next_id %}?lang={{ current_lang }}{% if filters %}&{{ filters }}{% endif %}" class="btn btn-secondary nav-next" title="{{ next_key }}">&rarr;</a>
+                        {% endif %}
+                        <button type="button" class="btn llm-btn" onclick="openLlmModal()" style="margin-left: auto;">Ask AI</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: All translations reference (compact) -->
+    <div class="card" style="width: 320px; min-width: 200px; flex-shrink: 1;">
+        <div class="card-header" style="padding: 0.5rem 0.75rem; font-size: 0.8125rem;">All Translations</div>
+        <div class="card-body" style="max-height: 500px; overflow-y: auto; padding: 0;" id="all-translations-list">
+            {% for item in all_translations %}
+            <div class="trans-row" id="trans-{{ item.lang }}">
+                <span class="badge badge-gray">{{ item.lang }}</span>
+                {% if item.verified %}
+                <span class="badge badge-success">Verified</span>
+                {% elif item.value %}
+                <span class="badge badge-warning">Unverified</span>
+                {% else %}
+                <span class="badge" style="background: var(--gray-200); color: var(--gray-500);">Empty</span>
+                {% endif %}
+                <span class="trans-text">{% if item.value %}{{ item.value }}{% else %}—{% endif %}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if is_privileged %}
+<div class="modal-overlay" id="delete-modal">
+    <div class="modal" style="max-width: 400px;">
+        <div class="modal-header">
+            <span class="modal-title">Delete Translation</span>
+            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this translation?</p>
+            <p class="translation-key" style="margin-top: 0.5rem; font-size: 0.875rem;">{{ translation.key }}</p>
+            <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.5rem;">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <button type="button" class="btn" style="background: var(--danger); color: white;" onclick="deleteTranslation()">Delete</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- LLM Help Modal -->
+<div class="modal-overlay" id="llm-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">AI Translation Help</span>
+            <button class="modal-close" onclick="closeLlmModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Additional Instructions (optional)</label>
+                <textarea class="form-textarea" id="llm-prompt" rows="3"
+                          placeholder="E.g., 'Use formal tone', 'This is a button label', 'Keep it short'..."></textarea>
+            </div>
+
+            <div id="llm-loading" style="display: none; text-align: center; padding: 1rem;">
+                <span class="spinner"></span>
+                <span style="margin-left: 0.5rem;">Generating translation...</span>
+            </div>
+
+            <div id="llm-error-modal" class="alert alert-error" style="display: none;"></div>
+
+            <!-- Single language result -->
+            <div id="llm-single-result" style="display: none;">
+                <div class="llm-result">
+                    <div class="llm-result-lang">{{ current_lang_name }} ({{ current_lang }})</div>
+                    <div class="llm-result-text" id="llm-single-text"></div>
+                </div>
+            </div>
+
+            <!-- All languages result -->
+            <div id="llm-all-results" class="llm-all-results" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn llm-btn" onclick="translateSingle()" id="btn-translate-single">
+                <span class="spinner" id="spinner-single" style="display: none;"></span>
+                Translate {{ current_lang_name }}
+            </button>
+            {% if is_privileged %}
+            <button type="button" class="btn btn-secondary" onclick="translateAll()" id="btn-translate-all">
+                <span class="spinner" id="spinner-all" style="display: none;"></span>
+                Translate All Languages
+            </button>
+            {% endif %}
+            <div style="flex: 1;"></div>
+            <button type="button" class="btn btn-success" onclick="applySingleAndReload()" id="btn-apply-single" style="display: none;">
+                Apply & Save
+            </button>
+            {% if is_privileged %}
+            <button type="button" class="btn btn-success" onclick="applyAllAndClose()" id="btn-apply-all" style="display: none;">
+                Apply All & Reload
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if translation.screenshot %}
+<div class="screenshot-lightbox" id="screenshot-lightbox" onclick="if(event.target===this)closeScreenshot()">
+    <button class="screenshot-lightbox-close" onclick="closeScreenshot()">&times;</button>
+    <img src="{{ translation.screenshot.url }}" alt="Screenshot">
+</div>
+{% endif %}
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+const translationId = {{ translation.id }};
+const currentLang = '{{ current_lang }}';
+const isPrivileged = {{ is_privileged|yesno:"true,false" }};
+
+async function safeFetchJson(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+    throw new Error(`Server error (${response.status})`);
+}
+
+// Delete modal
+function openDeleteModal() {
+    document.getElementById('delete-modal').classList.add('active');
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-modal').classList.remove('active');
+}
+
+async function deleteTranslation() {
+    try {
+        const response = await fetch(`/translate/api/dashboard/translations/${translationId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'include',
+        });
+
+        if (response.ok) {
+            // Redirect to language list
+            window.location.href = `/translate/dashboard/languages/${currentLang}/`;
+        } else {
+            const data = await safeFetchJson(response);
+            alert(data.error || 'Failed to delete translation');
+        }
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
+
+async function changeSourceFilter(source) {
+    // When source changes, redirect to the first translation in that source
+    // (or first in the filtered list with current verified filter)
+    const lang = currentLang;
+    const urlParams = new URL(window.location.href).searchParams;
+    const verifiedParam = urlParams.get('verified');
+    const sortParam = urlParams.get('sort');
+
+    let apiUrl = `/translate/api/dashboard/languages/${lang}/?`;
+    const params = [];
+    if (source) params.push(`source=${encodeURIComponent(source)}`);
+    if (verifiedParam) params.push(`verified=${verifiedParam}`);
+    apiUrl += params.join('&');
+
+    try {
+        const response = await fetch(apiUrl, {
+            headers: { 'X-CSRFToken': csrfToken },
+            credentials: 'include',
+        });
+
+        if (response.ok) {
+            const data = await safeFetchJson(response);
+            if (data.length > 0) {
+                // Navigate to first translation in filtered list
+                const firstId = data[0].id;
+                let newUrl = `/translate/dashboard/translations/${firstId}/?lang=${lang}`;
+                if (source) newUrl += `&source=${encodeURIComponent(source)}`;
+                if (verifiedParam) newUrl += `&verified=${verifiedParam}`;
+                if (sortParam && sortParam !== 'default') newUrl += `&sort=${encodeURIComponent(sortParam)}`;
+                window.location.href = newUrl;
+                return;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to get translations:', err);
+    }
+
+    // Fallback: go to language list page
+    let fallbackUrl = `/translate/dashboard/languages/${lang}/?`;
+    if (source) fallbackUrl += `source=${encodeURIComponent(source)}`;
+    window.location.href = fallbackUrl;
+}
+
+let lastSingleSuggestion = '';
+let lastAllSuggestions = {};
+
+function openLlmModal() {
+    document.getElementById('llm-modal').classList.add('active');
+    document.getElementById('llm-prompt').focus();
+    // Reset state
+    document.getElementById('llm-single-result').style.display = 'none';
+    document.getElementById('llm-all-results').style.display = 'none';
+    document.getElementById('llm-error-modal').style.display = 'none';
+    document.getElementById('btn-apply-single').style.display = 'none';
+    if (isPrivileged) {
+        document.getElementById('btn-apply-all').style.display = 'none';
+    }
+}
+
+function closeLlmModal() {
+    document.getElementById('llm-modal').classList.remove('active');
+}
+
+async function translateSingle() {
+    const prompt = document.getElementById('llm-prompt').value;
+    const loading = document.getElementById('llm-loading');
+    const errorDiv = document.getElementById('llm-error-modal');
+    const resultDiv = document.getElementById('llm-single-result');
+    const allResultsDiv = document.getElementById('llm-all-results');
+    const btnApplySingle = document.getElementById('btn-apply-single');
+    const spinner = document.getElementById('spinner-single');
+
+    loading.style.display = 'block';
+    errorDiv.style.display = 'none';
+    resultDiv.style.display = 'none';
+    allResultsDiv.style.display = 'none';
+    btnApplySingle.style.display = 'none';
+    spinner.style.display = 'inline-block';
+
+    try {
+        const response = await fetch('{% url "dashboard-llm-help" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                translation_id: translationId,
+                target_lang: currentLang,
+                prompt: prompt,
+            }),
+        });
+
+        const data = await safeFetchJson(response);
+
+        if (response.ok && data.suggestion) {
+            lastSingleSuggestion = data.suggestion;
+            document.getElementById('llm-single-text').textContent = data.suggestion;
+            resultDiv.style.display = 'block';
+            btnApplySingle.style.display = 'inline-flex';
+        } else {
+            errorDiv.textContent = data.error || 'Failed to get suggestion';
+            errorDiv.style.display = 'block';
+        }
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = 'block';
+    } finally {
+        loading.style.display = 'none';
+        spinner.style.display = 'none';
+    }
+}
+
+async function translateAll() {
+    if (!isPrivileged) return;
+
+    const prompt = document.getElementById('llm-prompt').value;
+    const loading = document.getElementById('llm-loading');
+    const errorDiv = document.getElementById('llm-error-modal');
+    const resultDiv = document.getElementById('llm-single-result');
+    const allResultsDiv = document.getElementById('llm-all-results');
+    const btnApplyAll = document.getElementById('btn-apply-all');
+    const spinner = document.getElementById('spinner-all');
+
+    loading.style.display = 'block';
+    errorDiv.style.display = 'none';
+    resultDiv.style.display = 'none';
+    allResultsDiv.style.display = 'none';
+    btnApplyAll.style.display = 'none';
+    spinner.style.display = 'inline-block';
+
+    try {
+        const response = await fetch('{% url "dashboard-llm-help" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                translation_id: translationId,
+                translate_all: true,
+                prompt: prompt,
+            }),
+        });
+
+        const data = await safeFetchJson(response);
+
+        if (response.ok && data.suggestions) {
+            lastAllSuggestions = data.suggestions;
+            // Build results HTML
+            let html = '';
+            for (const [lang, value] of Object.entries(data.suggestions)) {
+                html += `<div class="llm-result">
+                    <div class="llm-result-lang">${lang}</div>
+                    <div class="llm-result-text">${value || '<em>Empty</em>'}</div>
+                </div>`;
+            }
+            allResultsDiv.innerHTML = html;
+            allResultsDiv.style.display = 'block';
+            btnApplyAll.style.display = 'inline-flex';
+        } else {
+            errorDiv.textContent = data.error || 'Failed to get suggestions';
+            errorDiv.style.display = 'block';
+        }
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = 'block';
+    } finally {
+        loading.style.display = 'none';
+        spinner.style.display = 'none';
+    }
+}
+
+async function applySingleAndReload() {
+    if (!lastSingleSuggestion) return;
+
+    const prompt = document.getElementById('llm-prompt').value;
+    const loading = document.getElementById('llm-loading');
+    const errorDiv = document.getElementById('llm-error-modal');
+
+    loading.style.display = 'block';
+    errorDiv.style.display = 'none';
+
+    try {
+        const response = await fetch('{% url "dashboard-llm-help" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                translation_id: translationId,
+                target_lang: currentLang,
+                prompt: prompt,
+                apply: true,
+            }),
+        });
+
+        const data = await safeFetchJson(response);
+
+        if (response.ok && data.applied) {
+            window.location.reload();
+        } else {
+            errorDiv.textContent = data.error || 'Failed to apply translation';
+            errorDiv.style.display = 'block';
+            loading.style.display = 'none';
+        }
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = 'block';
+        loading.style.display = 'none';
+    }
+}
+
+async function applyAllAndClose() {
+    if (!isPrivileged || !Object.keys(lastAllSuggestions).length) return;
+
+    const prompt = document.getElementById('llm-prompt').value;
+    const loading = document.getElementById('llm-loading');
+    const errorDiv = document.getElementById('llm-error-modal');
+
+    loading.style.display = 'block';
+    errorDiv.style.display = 'none';
+
+    try {
+        const response = await fetch('{% url "dashboard-llm-help" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                translation_id: translationId,
+                translate_all: true,
+                prompt: prompt,
+                apply: true,
+            }),
+        });
+
+        const data = await safeFetchJson(response);
+
+        if (response.ok && data.applied) {
+            // Reload page to show updated translations
+            window.location.reload();
+        } else {
+            errorDiv.textContent = data.error || 'Failed to apply translations';
+            errorDiv.style.display = 'block';
+            loading.style.display = 'none';
+        }
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = 'block';
+        loading.style.display = 'none';
+    }
+}
+
+// Screenshot lightbox
+function openScreenshot() {
+    const el = document.getElementById('screenshot-lightbox');
+    if (el) el.classList.add('active');
+}
+function closeScreenshot() {
+    const el = document.getElementById('screenshot-lightbox');
+    if (el) el.classList.remove('active');
+}
+
+// Close modals on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeScreenshot();
+        closeLlmModal();
+        if (isPrivileged) closeDeleteModal();
+    }
+    // Ctrl/Cmd + Enter to save form
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !document.getElementById('llm-modal').classList.contains('active')) {
+        e.preventDefault();
+        document.getElementById('translation-form').submit();
+    }
+    // Arrow navigation (when not in input/textarea and modal not open)
+    if (['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName)) return;
+    if (document.getElementById('llm-modal').classList.contains('active')) return;
+    if (e.key === 'ArrowLeft') {
+        const prevLink = document.querySelector('.nav-prev');
+        if (prevLink) prevLink.click();
+    }
+    if (e.key === 'ArrowRight') {
+        const nextLink = document.querySelector('.nav-next');
+        if (nextLink) nextLink.click();
+    }
+});
+
+// Close modal on overlay click
+document.getElementById('llm-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeLlmModal();
+});
+
+// Auto-save translator comment
+let commentSaveTimeout = null;
+const commentTextarea = document.getElementById('translator-comment');
+const commentSaveStatus = document.getElementById('comment-save-status');
+
+function saveTranslatorComment() {
+    const comment = commentTextarea.value;
+    commentSaveStatus.textContent = 'Saving...';
+    commentSaveStatus.className = 'save-status saving';
+
+    fetch(`/translate/api/dashboard/translations/${translationId}/comment/`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ translator_comment: comment }),
+    })
+    .then(response => {
+        if (response.ok) {
+            commentSaveStatus.textContent = 'Saved';
+            commentSaveStatus.className = 'save-status saved';
+            setTimeout(() => {
+                commentSaveStatus.textContent = '';
+            }, 2000);
+        } else {
+            throw new Error('Failed to save');
+        }
+    })
+    .catch(err => {
+        commentSaveStatus.textContent = 'Error saving';
+        commentSaveStatus.className = 'save-status error';
+    });
+}
+
+commentTextarea.addEventListener('input', function() {
+    if (commentSaveTimeout) {
+        clearTimeout(commentSaveTimeout);
+    }
+    commentSaveStatus.textContent = '';
+    commentSaveTimeout = setTimeout(saveTranslatorComment, 1000);
+});
+
+// Save on blur too
+commentTextarea.addEventListener('blur', function() {
+    if (commentSaveTimeout) {
+        clearTimeout(commentSaveTimeout);
+        saveTranslatorComment();
+    }
+});
+</script>
+{% endblock %}
