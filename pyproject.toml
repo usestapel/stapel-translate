@@ -30,3 +30,7 @@ packages = ["stapel_translate", "stapel_translate.migrations", "stapel_translate
 
 [tool.setuptools.package-data]
 stapel_translate = ["migrations/*.py", "migrations/**/*.py"]
+
+[tool.pytest.ini_options]
+django_find_project = false
+addopts = "--tb=short -q"
