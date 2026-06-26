@@ -120,7 +120,9 @@ class TranslationEntry(RevisionMixin, models.Model):
     def _publish_translations_changed(self):
         """Publish a translations-changed Kafka event with all language values."""
         try:
-            from stapel_core.kafka import publish_event, Event, EventType, TOPIC_TRANSLATIONS_CHANGED
+            from stapel_core.bus import publish, Event
+            from stapel_core.kafka.events import EventType
+            from stapel_core.kafka.topics import TOPIC_TRANSLATIONS_CHANGED
 
             values = {}
             for lang in SUPPORTED_LANGUAGES:
@@ -131,15 +133,18 @@ class TranslationEntry(RevisionMixin, models.Model):
             if not values:
                 return
 
-            event = Event(
-                event_type=EventType.TRANSLATIONS_CHANGED,
-                service="translate",
-                payload={
-                    "key": self.key,
-                    "values": values,
-                },
+            publish(
+                TOPIC_TRANSLATIONS_CHANGED,
+                Event(
+                    event_type=EventType.TRANSLATIONS_CHANGED,
+                    service="translate",
+                    payload={
+                        "key": self.key,
+                        "values": values,
+                    },
+                    key=self.key,
+                ),
             )
-            publish_event(TOPIC_TRANSLATIONS_CHANGED, event, key=self.key)
         except Exception:
             logger.exception(
                 "Failed to publish translations-changed event for key %s", self.key
