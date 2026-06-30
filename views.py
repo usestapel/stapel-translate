@@ -6,16 +6,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes as SpectacularTypes
-from stapel_core.django.openapi import BulkUpdateResponseSerializer, OpenApiTypes
-from stapel_core.django.errors import IronResponse, IronErrorResponse
-from stapel_core.django.errors import ERR_400_EXPECTED_LIST
-from stapel_core.django.revision import (
+from stapel_core.django.openapi.schemas import BulkUpdateResponseSerializer, OpenApiTypes
+from stapel_core.django.api.errors import IronResponse, IronErrorResponse
+from stapel_core.django.api.errors import ERR_400_EXPECTED_LIST
+from stapel_core.django.api.revision import (
     RevisionPagination,
     RevisionViewSetMixin,
     REVISION_PARAMETERS,
 )
 
-from stapel_core.django.permissions import IsSuperUser, ReadOnlyOrSuperUser
+from stapel_core.django.api.permissions import IsSuperUser, ReadOnlyOrSuperUser
 
 from .models import TranslationEntry, SUPPORTED_LANGUAGES
 from .dto import LanguageRevisionResponse

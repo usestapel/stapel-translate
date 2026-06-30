@@ -14,7 +14,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from rest_framework import status
 from rest_framework.views import APIView
-from stapel_core.django.errors import IronResponse
+from stapel_core.django.api.errors import IronResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 

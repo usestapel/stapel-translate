@@ -17,7 +17,7 @@ from .models import TranslationEntry
 
 logger = logging.getLogger(__name__)
 
-NOTIFICATIONS_URL = os.getenv('NOTIFICATIONS_URL', 'http://iron-notifications:8000')
+NOTIFICATIONS_URL = os.getenv("NOTIFICATIONS_URL", "http://stapel-notifications:8000")
 
 
 def collect_notification_keys():
@@ -31,8 +31,8 @@ def collect_notification_keys():
 
     Raises Exception on failure.
     """
-    api_key = getattr(settings, 'SERVICE_API_KEY', None)
-    headers = {'X-API-Key': api_key} if api_key else {}
+    api_key = getattr(settings, "SERVICE_API_KEY", None)
+    headers = {"X-API-Key": api_key} if api_key else {}
 
     url = f"{NOTIFICATIONS_URL}/notifications/api/notification-keys/"
     response = http_requests.get(url, headers=headers, timeout=30)
@@ -42,8 +42,8 @@ def collect_notification_keys():
 
     # Clear metadata only after successful fetch
     cleared_count = TranslationEntry.objects.filter(
-        source='backend:notifications'
-    ).update(refs=[], comment='')
+        source="backend:notifications"
+    ).update(refs=[], comment="")
 
     keys_data = response.json()
     if not isinstance(keys_data, dict):
@@ -62,11 +62,11 @@ def collect_notification_keys():
         entry, created = TranslationEntry.objects.get_or_create(
             key=key,
             defaults={
-                'source': 'backend:notifications',
-                'comment': 'Notification template',
-                'refs': [url],
-                'en': english_default,
-            }
+                "source": "backend:notifications",
+                "comment": "Notification template",
+                "refs": [url],
+                "en": english_default,
+            },
         )
         if created:
             created_count += 1
@@ -77,9 +77,9 @@ def collect_notification_keys():
                 entry.deleted = False
                 updated = True
             # Update source if not set or already backend:notifications
-            if not entry.source or entry.source == 'backend:notifications':
-                if entry.source != 'backend:notifications':
-                    entry.source = 'backend:notifications'
+            if not entry.source or entry.source == "backend:notifications":
+                if entry.source != "backend:notifications":
+                    entry.source = "backend:notifications"
                     updated = True
             # Update refs
             current_refs = entry.refs or []
@@ -96,8 +96,8 @@ def collect_notification_keys():
                 updated_count += 1
 
     return {
-        'total_keys': len(seen_keys),
-        'created': created_count,
-        'updated': updated_count,
-        'cleared': cleared_count,
+        "total_keys": len(seen_keys),
+        "created": created_count,
+        "updated": updated_count,
+        "cleared": cleared_count,
     }

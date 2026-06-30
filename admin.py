@@ -21,7 +21,7 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
-AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://iron-agent:3000/agent")
+AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://stapel-agent:3000/agent")
 
 LLM_TASK_CACHE_KEY = "llm_translation_task_status"
 

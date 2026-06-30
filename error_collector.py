@@ -10,8 +10,8 @@ Used to gather all error translation keys.
 import logging
 
 import requests as http_requests
-from stapel_core.core.config import IRON_SERVICES
 from django.conf import settings
+from stapel_core.core.config import IRON_SERVICES
 
 from .models import TranslationEntry
 
@@ -50,7 +50,7 @@ def collect_error_keys_from_services():
     for service in IRON_SERVICES:
         name = service["name"]
         prefix = service["prefix"]
-        url = f"http://iron-{prefix}:8000/{prefix}/api/error-keys/"
+        url = f"http://stapel-{prefix}:8000/{prefix}/api/error-keys/"
 
         try:
             response = http_requests.get(url, headers=headers, timeout=15)
