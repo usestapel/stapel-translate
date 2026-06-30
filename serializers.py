@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from stapel_core.django.serializers import IronDataclassSerializer
+from stapel_core.django.api.serializers import IronDataclassSerializer
 from .models import TranslationEntry
 from .dto import LanguageRevisionResponse
 
