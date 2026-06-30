@@ -21,7 +21,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.views import APIView
-from stapel_core.django.api.errors import IronResponse
+from stapel_core.django.api.errors import StapelResponse
 
 from .dashboard_serializers import (
     DashboardStatsResponseSerializer,
@@ -154,7 +154,7 @@ class DashboardStatsView(APIView):
         dto = DashboardStatsResponse(
             languages=languages_stats, total_entries=total_entries
         )
-        return IronResponse(DashboardStatsResponseSerializer(dto))
+        return StapelResponse(DashboardStatsResponseSerializer(dto))
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -211,7 +211,7 @@ class LanguageTranslationsView(APIView):
     )
     def get(self, request, lang):
         if lang not in SUPPORTED_LANGUAGES:
-            return IronResponse(
+            return StapelResponse(
                 {"error": f"Invalid language: {lang}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -246,7 +246,7 @@ class LanguageTranslationsView(APIView):
         queryset = _apply_sort_order(queryset, sort_param)
 
         serializer = TranslationListSerializer(queryset, many=True, language=lang)
-        return IronResponse(serializer)
+        return StapelResponse(serializer)
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -265,12 +265,12 @@ class TranslationDetailView(APIView):
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = TranslationDetailSerializer(entry)
-        return IronResponse(serializer)
+        return StapelResponse(serializer)
 
     @extend_schema(
         description="Delete a translation (soft delete). Only for staff/superuser.",
@@ -279,7 +279,7 @@ class TranslationDetailView(APIView):
     def delete(self, request, pk):
         # Only staff/superuser can delete
         if not is_privileged_user(request.user):
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Only staff users can delete translations"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -287,7 +287,7 @@ class TranslationDetailView(APIView):
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -307,7 +307,7 @@ class TranslationDetailView(APIView):
             source="manual",
         )
 
-        return IronResponse(status=status.HTTP_204_NO_CONTENT)
+        return StapelResponse(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
         description="Update a translation value for a specific language.",
@@ -318,7 +318,7 @@ class TranslationDetailView(APIView):
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -340,7 +340,7 @@ class TranslationDetailView(APIView):
                 author_email=request.user.email,
             ).exists()
             if not has_verified:
-                return IronResponse(
+                return StapelResponse(
                     {
                         "error": "This translation is verified. Only admins or the verifier can edit it."
                     },
@@ -368,7 +368,7 @@ class TranslationDetailView(APIView):
                 source="manual",
             )
 
-        return IronResponse(TranslationDetailSerializer(entry))
+        return StapelResponse(TranslationDetailSerializer(entry))
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -388,7 +388,7 @@ class TranslationVerifyView(APIView):
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -419,7 +419,7 @@ class TranslationVerifyView(APIView):
                 source="manual",
             )
 
-        return IronResponse(TranslationDetailSerializer(entry))
+        return StapelResponse(TranslationDetailSerializer(entry))
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -439,7 +439,7 @@ class TranslatorCommentView(APIView):
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -449,7 +449,7 @@ class TranslatorCommentView(APIView):
         entry.translator_comment = serializer.validated_data["translator_comment"]
         entry.save()
 
-        return IronResponse(TranslationDetailSerializer(entry))
+        return StapelResponse(TranslationDetailSerializer(entry))
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -491,7 +491,7 @@ class TranslationNavigationView(APIView):
         try:
             TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -523,7 +523,7 @@ class TranslationNavigationView(APIView):
             next_id = None
 
         dto = NavigationResponse(prev_id=prev_id, next_id=next_id)
-        return IronResponse(NavigationResponseSerializer(dto))
+        return StapelResponse(NavigationResponseSerializer(dto))
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -552,7 +552,7 @@ class LLMHelpView(APIView):
 
         # Only staff/superuser can use translate_all
         if translate_all and not is_privileged_user(request.user):
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Only staff users can translate all languages"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -560,7 +560,7 @@ class LLMHelpView(APIView):
         try:
             entry = TranslationEntry.objects.get(pk=translation_id, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return IronResponse(
+            return StapelResponse(
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -722,16 +722,16 @@ class LLMHelpView(APIView):
                     target_lang=target_lang,
                     source_context=context_translations,
                 )
-                return IronResponse(LLMSingleTranslationResponseSerializer(dto))
+                return StapelResponse(LLMSingleTranslationResponseSerializer(dto))
             else:
-                return IronResponse(
+                return StapelResponse(
                     {"error": "LLM service returned non-ok status"},
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
         except http_requests.RequestException as e:
             logger.error(f"LLM service error: {e}")
-            return IronResponse(
+            return StapelResponse(
                 {"error": f"LLM service error: {str(e)}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
@@ -825,7 +825,7 @@ class LLMHelpView(APIView):
                     try:
                         result = json.loads(result)
                     except json.JSONDecodeError:
-                        return IronResponse(
+                        return StapelResponse(
                             {
                                 "error": "LLM returned invalid JSON",
                                 "raw_result": result,
@@ -867,16 +867,16 @@ class LLMHelpView(APIView):
                     translate_all=True,
                     source_context=context_translations,
                 )
-                return IronResponse(LLMAllTranslationsResponseSerializer(dto))
+                return StapelResponse(LLMAllTranslationsResponseSerializer(dto))
             else:
-                return IronResponse(
+                return StapelResponse(
                     {"error": "LLM service returned non-ok status"},
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
         except http_requests.RequestException as e:
             logger.error(f"LLM service error: {e}")
-            return IronResponse(
+            return StapelResponse(
                 {"error": f"LLM service error: {str(e)}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
