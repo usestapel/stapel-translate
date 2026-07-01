@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('author_name', models.CharField(blank=True, default='', max_length=255)),
                 ('source', models.CharField(default='dashboard', max_length=50)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('entry', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='history', to='stapel_translate.translationentry')),
+                ('entry', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='history', to='translate.translationentry')),
             ],
             options={
                 'verbose_name': 'Translation History',
