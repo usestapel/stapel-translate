@@ -1,4 +1,4 @@
-from stapel_core.django.api.serializers import IronDataclassSerializer
+from stapel_core.django.api.serializers import StapelDataclassSerializer
 from .dto import (
     FigmaAuthResponse,
     FigmaTranslationsListResponse,
@@ -11,41 +11,41 @@ from .dto import (
 )
 
 
-class FigmaAuthResponseSerializer(IronDataclassSerializer):
+class FigmaAuthResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaAuthResponse
 
 
-class FigmaTranslationsListResponseSerializer(IronDataclassSerializer):
+class FigmaTranslationsListResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaTranslationsListResponse
 
 
-class FigmaTranslationUpsertResponseSerializer(IronDataclassSerializer):
+class FigmaTranslationUpsertResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaTranslationUpsertResponse
 
 
-class FigmaSearchResponseSerializer(IronDataclassSerializer):
+class FigmaSearchResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaSearchResponse
 
 
-class FigmaTranslationDetailResponseSerializer(IronDataclassSerializer):
+class FigmaTranslationDetailResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaTranslationDetailResponse
 
 
-class FigmaSyncResponseSerializer(IronDataclassSerializer):
+class FigmaSyncResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaSyncResponse
 
 
-class FigmaRemoveRefResponseSerializer(IronDataclassSerializer):
+class FigmaRemoveRefResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaRemoveRefResponse
 
 
-class FigmaScreenshotUploadResponseSerializer(IronDataclassSerializer):
+class FigmaScreenshotUploadResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = FigmaScreenshotUploadResponse

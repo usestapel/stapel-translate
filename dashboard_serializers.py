@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from stapel_core.django.api.serializers import IronDataclassSerializer
+from stapel_core.django.api.serializers import StapelDataclassSerializer
 
 from .models import TranslationEntry, SUPPORTED_LANGUAGES
 from .dto import (
@@ -87,21 +87,21 @@ class LLMHelpRequestSerializer(serializers.Serializer):
         return data
 
 
-class DashboardStatsResponseSerializer(IronDataclassSerializer):
+class DashboardStatsResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = DashboardStatsResponse
 
 
-class NavigationResponseSerializer(IronDataclassSerializer):
+class NavigationResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = NavigationResponse
 
 
-class LLMSingleTranslationResponseSerializer(IronDataclassSerializer):
+class LLMSingleTranslationResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = LLMSingleTranslationResponse
 
 
-class LLMAllTranslationsResponseSerializer(IronDataclassSerializer):
+class LLMAllTranslationsResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = LLMAllTranslationsResponse

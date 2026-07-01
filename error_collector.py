@@ -11,7 +11,7 @@ import logging
 
 import requests as http_requests
 from django.conf import settings
-from stapel_core.core.config import IRON_SERVICES
+from stapel_core.core.config import STAPEL_SERVICES
 
 from .models import TranslationEntry
 
@@ -47,7 +47,7 @@ def collect_error_keys_from_services():
     services_ok = []
     services_failed = []
 
-    for service in IRON_SERVICES:
+    for service in STAPEL_SERVICES:
         name = service["name"]
         prefix = service["prefix"]
         url = f"http://stapel-{prefix}:8000/{prefix}/api/error-keys/"
