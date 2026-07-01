@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from stapel_core.django.api.serializers import IronDataclassSerializer
+from stapel_core.django.api.serializers import StapelDataclassSerializer
 from .models import TranslationEntry
 from .dto import LanguageRevisionResponse
 
@@ -10,6 +10,6 @@ class TranslationEntrySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class LanguageRevisionResponseSerializer(IronDataclassSerializer):
+class LanguageRevisionResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = LanguageRevisionResponse
