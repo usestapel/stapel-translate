@@ -11,12 +11,14 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import path
 
+from .conf import LANGUAGE_NAMES
 from .models import (
     SUPPORTED_LANGUAGES,
     AuthorizedTranslator,
     FigmaApiKey,
     TranslationEntry,
     TranslationHistory,
+    TranslationValue,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,8 +70,8 @@ def _translate_entries_background(entry_ids: list):
         missing_langs = []
 
         for lang in SUPPORTED_LANGUAGES:
-            value = getattr(entry, lang, None)
-            is_verified = getattr(entry, f"{lang}_verified", False)
+            value = entry.get_value(lang)
+            is_verified = entry.get_verified(lang)
             if value:
                 status_label = "VERIFIED" if is_verified else "unverified"
                 existing_translations.append(f'- {lang} [{status_label}]: "{value}"')
@@ -141,12 +143,12 @@ Return ONLY valid JSON like: {{{json_example}}}"""
                 for lang in SUPPORTED_LANGUAGES:
                     if lang in result and result[lang]:
                         # Skip if already has a value
-                        if getattr(entry, lang, None):
+                        if entry.get_value(lang):
                             continue
                         # Skip if verified
-                        if getattr(entry, f"{lang}_verified", False):
+                        if entry.get_verified(lang):
                             continue
-                        setattr(entry, lang, result[lang])
+                        entry.set_value(lang, result[lang])
                 entry.llm_translated = True
                 entry.save()
                 translated_count += 1
@@ -223,39 +225,16 @@ def translate_with_llm(modeladmin, request, queryset):
     )
 
 
-LANGUAGE_CHOICES = [
-    (code, f"{code} — {name}")
-    for code, name in zip(
-        SUPPORTED_LANGUAGES,
-        [
-            "English",
-            "Luxembourgish",
-            "French",
-            "German",
-            "Spanish",
-            "Portuguese",
-            "Italian",
-            "Russian",
-            "Ukrainian",
-            "Polish",
-            "Arabic",
-            "Hindi",
-            "Mandarin",
-            "Turkish",
-            "Korean",
-            "Japanese",
-            "Serbian",
-            "Croatian",
-            "Hungarian",
-            "Hebrew",
-        ],
-    )
-]
+def _language_choices():
+    return [
+        (code, f"{code} — {LANGUAGE_NAMES.get(code, code)}")
+        for code in SUPPORTED_LANGUAGES
+    ]
 
 
 class AuthorizedTranslatorForm(forms.ModelForm):
     allowed_languages = forms.MultipleChoiceField(
-        choices=LANGUAGE_CHOICES,
+        choices=_language_choices,
         widget=forms.CheckboxSelectMultiple,
         required=False,
         help_text="Languages this translator can edit. Leave all unchecked = access to all languages.",
@@ -297,10 +276,21 @@ class AuthorizedTranslatorAdmin(admin.ModelAdmin):
 
 @admin.register(FigmaApiKey)
 class FigmaApiKeyAdmin(admin.ModelAdmin):
-    list_display = ["name", "id", "is_active", "created_at", "last_used_at"]
+    list_display = ["name", "prefix", "is_active", "created_at", "last_used_at"]
     list_filter = ["is_active"]
-    search_fields = ["name", "id"]
-    readonly_fields = ["id", "created_at", "last_used_at"]
+    search_fields = ["name", "prefix"]
+    readonly_fields = ["prefix", "created_at", "last_used_at"]
+    fields = ["name", "is_active", "prefix", "created_at", "last_used_at"]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        plaintext = getattr(obj, "plaintext_key", None)
+        if plaintext:
+            messages.warning(
+                request,
+                f"Figma API key for '{obj.name}': {plaintext} — "
+                "copy it now, it will NOT be shown again.",
+            )
 
 
 @admin.register(TranslationHistory)
@@ -371,29 +361,10 @@ class TranslationHistoryAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
 
-# Language display names for admin UI
-LANGUAGE_NAMES = {
-    "en": "English",
-    "lb": "Luxembourgish",
-    "fr": "French",
-    "de": "German",
-    "es": "Spanish",
-    "pt": "Portuguese",
-    "it": "Italian",
-    "ru": "Russian",
-    "uk": "Ukrainian",
-    "pl": "Polish",
-    "ar": "Arabic",
-    "hi": "Hindi",
-    "zh": "Mandarin",
-    "tr": "Turkish",
-    "ko": "Korean",
-    "ja": "Japanese",
-    "sr": "Serbian",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "he": "Hebrew",
-}
+class TranslationValueInline(admin.TabularInline):
+    model = TranslationValue
+    extra = 0
+    fields = ["language", "value", "verified"]
 
 
 @admin.register(TranslationEntry)
@@ -401,22 +372,44 @@ class TranslationEntryAdmin(admin.ModelAdmin):
     list_display = [
         "key",
         "comment",
-        "en",
-        "lb",
-        "fr",
-        "de",
+        "en_value",
+        "lb_value",
+        "fr_value",
+        "de_value",
         "en_verified",
         "llm_translated",
         "source",
         "revision",
         "deleted",
     ]
-    list_filter = ["source", "deleted", "llm_translated"] + [
-        f"{lang}_verified" for lang in SUPPORTED_LANGUAGES
-    ]
-    search_fields = ["key", "comment"] + SUPPORTED_LANGUAGES
+    list_filter = ["source", "deleted", "llm_translated"]
+    search_fields = ["key", "comment", "values__value"]
     change_list_template = "admin/translations/change_list_with_lang.html"
     actions = [translate_with_llm]
+    inlines = [TranslationValueInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("values")
+
+    @admin.display(description="English")
+    def en_value(self, obj):
+        return obj.get_value("en")
+
+    @admin.display(description="Luxembourgish")
+    def lb_value(self, obj):
+        return obj.get_value("lb")
+
+    @admin.display(description="French")
+    def fr_value(self, obj):
+        return obj.get_value("fr")
+
+    @admin.display(description="German")
+    def de_value(self, obj):
+        return obj.get_value("de")
+
+    @admin.display(description="English verified", boolean=True)
+    def en_verified(self, obj):
+        return obj.get_verified("en")
 
     def changelist_view(self, request, extra_context=None):
         lang = cache.get("admin_translation_lang", "en")

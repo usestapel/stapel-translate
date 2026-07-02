@@ -82,13 +82,15 @@ def collect_error_keys_from_services():
                         "source": "backend:errors",
                         "comment": name,
                         "refs": [ref],
-                        "en": english_template,
                     },
                 )
                 if created:
+                    if english_template:
+                        entry.set_value("en", english_template)
                     created_count += 1
                 else:
                     updated = False
+                    en_updated = False
                     # Reactivate soft-deleted entry
                     if entry.deleted:
                         entry.deleted = False
@@ -117,12 +119,13 @@ def collect_error_keys_from_services():
                         updated = True
 
                     # Set en only if empty (don't overwrite manual edits)
-                    if not entry.en and english_template:
-                        entry.en = english_template
-                        updated = True
+                    if not entry.get_value("en") and english_template:
+                        entry.set_value("en", english_template)
+                        en_updated = True
 
                     if updated:
                         entry.save()
+                    if updated or en_updated:
                         updated_count += 1
 
             services_ok.append(name)

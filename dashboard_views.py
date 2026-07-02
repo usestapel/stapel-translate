@@ -11,7 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core import serializers
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
@@ -42,11 +42,13 @@ from .dto import (
     LLMSingleTranslationResponse,
     NavigationResponse,
 )
+from .conf import LANGUAGE_NAMES
 from .models import (
     SUPPORTED_LANGUAGES,
     AuthorizedTranslator,
     TranslationEntry,
     TranslationHistory,
+    TranslationValue,
 )
 from .permissions import (
     IsAuthorizedTranslator,
@@ -76,29 +78,35 @@ def _apply_sort_order(queryset, sort_param):
         return queryset.order_by("source", F("order").asc(nulls_last=True), "id")
 
 
-# Language display names
-LANGUAGE_NAMES = {
-    "en": "English",
-    "lb": "Luxembourgish",
-    "fr": "French",
-    "de": "German",
-    "es": "Spanish",
-    "pt": "Portuguese",
-    "it": "Italian",
-    "ru": "Russian",
-    "uk": "Ukrainian",
-    "pl": "Polish",
-    "ar": "Arabic",
-    "hi": "Hindi",
-    "zh": "Mandarin",
-    "tr": "Turkish",
-    "ko": "Korean",
-    "ja": "Japanese",
-    "sr": "Serbian",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "he": "Hebrew",
-}
+def _filter_by_verified(queryset, lang, verified):
+    """Filter entries by the verification state of *lang*.
+
+    Entries without a value row for *lang* count as unverified — same
+    semantics as the old default-False boolean columns.
+    """
+    if verified:
+        return queryset.filter(values__language=lang, values__verified=True)
+    return queryset.exclude(values__language=lang, values__verified=True)
+
+
+def _language_stats(entry_queryset):
+    """{lang: {"total": N, "verified": N}} for entries in *entry_queryset*.
+
+    Counts only non-empty values, matching the old column-based stats.
+    """
+    rows = (
+        TranslationValue.objects.filter(entry__in=entry_queryset)
+        .exclude(value="")
+        .values("language")
+        .annotate(
+            total=Count("id"),
+            verified_count=Count("id", filter=Q(verified=True)),
+        )
+    )
+    return {
+        row["language"]: {"total": row["total"], "verified": row["verified_count"]}
+        for row in rows
+    }
 
 
 @extend_schema(tags=["Translator Dashboard"])
@@ -133,14 +141,13 @@ class DashboardStatsView(APIView):
 
         total_entries = queryset.count()
 
+        stats_by_lang = _language_stats(queryset)
+
         languages_stats = []
         for lang in SUPPORTED_LANGUAGES:
-            # Count entries that have a value for this language
-            has_value_q = Q(**{f"{lang}__isnull": False}) & ~Q(**{f"{lang}": ""})
-            verified_q = Q(**{f"{lang}_verified": True})
-
-            total = queryset.filter(has_value_q).count()
-            verified = queryset.filter(has_value_q & verified_q).count()
+            row = stats_by_lang.get(lang, {"total": 0, "verified": 0})
+            total = row["total"]
+            verified = row["verified"]
 
             languages_stats.append(
                 LanguageStats(
@@ -228,7 +235,7 @@ class LanguageTranslationsView(APIView):
         verified_param = request.query_params.get("verified")
         if verified_param is not None:
             verified = verified_param.lower() == "true"
-            queryset = queryset.filter(**{f"{lang}_verified": verified})
+            queryset = _filter_by_verified(queryset, lang, verified)
 
         # Filter by no refs
         no_refs_param = request.query_params.get("no_refs")
@@ -239,12 +246,13 @@ class LanguageTranslationsView(APIView):
         search = request.query_params.get("search")
         if search:
             queryset = queryset.filter(
-                Q(key__icontains=search) | Q(**{f"{lang}__icontains": search})
-            )
+                Q(key__icontains=search)
+                | Q(values__language=lang, values__value__icontains=search)
+            ).distinct()
 
         # Apply sort order
         sort_param = request.query_params.get("sort", "default")
-        queryset = _apply_sort_order(queryset, sort_param)
+        queryset = _apply_sort_order(queryset, sort_param).prefetch_related("values")
 
         serializer = TranslationListSerializer(queryset, many=True, language=lang)
         return StapelResponse(serializer)
@@ -339,7 +347,7 @@ class TranslationDetailView(APIView):
 
         # Block non-privileged translators from editing verified translations
         # unless they themselves verified this key+language
-        is_verified = getattr(entry, f"{lang}_verified", False)
+        is_verified = entry.get_verified(lang)
         if is_verified and not is_privileged_user(request.user):
             has_verified = TranslationHistory.objects.filter(
                 entry=entry,
@@ -357,10 +365,9 @@ class TranslationDetailView(APIView):
                 )
 
         # Get old value for history
-        old_value = getattr(entry, lang, "") or ""
+        old_value = entry.get_value(lang) or ""
 
-        setattr(entry, lang, value)
-        entry.save()
+        entry.set_value(lang, value)
 
         # Record history if value changed
         if old_value != value:
@@ -414,10 +421,9 @@ class TranslationVerifyView(APIView):
             )
 
         # Get old value for history
-        old_verified = getattr(entry, f"{lang}_verified", False)
+        old_verified = entry.get_verified(lang)
 
-        setattr(entry, f"{lang}_verified", verified)
-        entry.save()
+        entry.set_value(lang, verified=verified)
 
         # Record history if verification changed
         if old_verified != verified:
@@ -521,7 +527,7 @@ class TranslationNavigationView(APIView):
         verified_param = request.query_params.get("verified")
         if lang and lang in SUPPORTED_LANGUAGES and verified_param is not None:
             verified = verified_param.lower() == "true"
-            queryset = queryset.filter(**{f"{lang}_verified": verified})
+            queryset = _filter_by_verified(queryset, lang, verified)
 
         sort_param = request.query_params.get("sort", "default")
         queryset = _apply_sort_order(queryset, sort_param)
@@ -592,11 +598,11 @@ class LLMHelpView(APIView):
             )
 
         # Build context from existing translations
-        context_translations = {}
-        for lang in SUPPORTED_LANGUAGES:
-            value = getattr(entry, lang, None)
-            if value:
-                context_translations[lang] = value
+        context_translations = {
+            lang: entry.get_value(lang)
+            for lang in SUPPORTED_LANGUAGES
+            if entry.get_value(lang)
+        }
 
         api_key = getattr(settings, "SERVICE_API_KEY", None)
         headers = (
@@ -656,9 +662,9 @@ class LLMHelpView(APIView):
         if context_translations:
             prompt_parts.append("\nExisting translations:")
             for lang in SUPPORTED_LANGUAGES:
-                value = getattr(entry, lang, None)
+                value = entry.get_value(lang)
                 if value:
-                    is_verified = getattr(entry, f"{lang}_verified", False)
+                    is_verified = entry.get_verified(lang)
                     status = "[VERIFIED]" if is_verified else "[unverified]"
                     prompt_parts.append(
                         f'- {LANGUAGE_NAMES.get(lang, lang)} {status}: "{value}"'
@@ -724,9 +730,8 @@ class LLMHelpView(APIView):
 
                 # Apply translation if requested
                 if apply_translation and suggestion:
-                    old_value = getattr(entry, target_lang, "") or ""
-                    setattr(entry, target_lang, suggestion)
-                    entry.save()
+                    old_value = entry.get_value(target_lang) or ""
+                    entry.set_value(target_lang, suggestion)
 
                     # Record history
                     if old_value != suggestion:
@@ -772,7 +777,7 @@ class LLMHelpView(APIView):
         langs_to_translate = []
 
         for lang in SUPPORTED_LANGUAGES:
-            if getattr(entry, f"{lang}_verified", False):
+            if entry.get_verified(lang):
                 verified_langs.append(lang)
             else:
                 langs_to_translate.append(lang)
@@ -797,9 +802,9 @@ class LLMHelpView(APIView):
         # Add ALL existing translations with verified status
         prompt_parts.append("\nExisting translations:")
         for lang in SUPPORTED_LANGUAGES:
-            value = getattr(entry, lang, None)
+            value = entry.get_value(lang)
             if value:
-                is_verified = getattr(entry, f"{lang}_verified", False)
+                is_verified = entry.get_verified(lang)
                 verified_label = "[VERIFIED]" if is_verified else "[unverified]"
                 prompt_parts.append(
                     f'- {LANGUAGE_NAMES.get(lang, lang)} ({lang}) {verified_label}: "{value}"'
@@ -865,11 +870,11 @@ class LLMHelpView(APIView):
                     for lang in SUPPORTED_LANGUAGES:
                         if lang in result and result[lang]:
                             # Skip verified translations
-                            if getattr(entry, f"{lang}_verified", False):
+                            if entry.get_verified(lang):
                                 continue
-                            old_value = getattr(entry, lang, "") or ""
+                            old_value = entry.get_value(lang) or ""
                             new_value = result[lang]
-                            setattr(entry, lang, new_value)
+                            entry.set_value(lang, new_value)
 
                             # Record history
                             if old_value != new_value:
@@ -964,13 +969,13 @@ class DashboardIndexPageView(AuthorizedTranslatorMixin, View):
                 lang for lang in SUPPORTED_LANGUAGES if lang in allowed_languages
             ]
 
+        stats_by_lang = _language_stats(queryset)
+
         languages_stats = []
         for lang in display_languages:
-            has_value_q = Q(**{f"{lang}__isnull": False}) & ~Q(**{f"{lang}": ""})
-            verified_q = Q(**{f"{lang}_verified": True})
-
-            translated = queryset.filter(has_value_q).count()
-            verified = queryset.filter(has_value_q & verified_q).count()
+            row = stats_by_lang.get(lang, {"total": 0, "verified": 0})
+            translated = row["total"]
+            verified = row["verified"]
             unverified = translated - verified
 
             languages_stats.append(
@@ -1033,21 +1038,21 @@ class DashboardLanguagePageView(AuthorizedTranslatorMixin, View):
         verified_filter = request.GET.get("verified", "")
         if verified_filter:
             verified = verified_filter.lower() == "true"
-            queryset = queryset.filter(**{f"{lang}_verified": verified})
+            queryset = _filter_by_verified(queryset, lang, verified)
 
         search_filter = request.GET.get("search", "")
         if search_filter:
             queryset = queryset.filter(
                 Q(key__icontains=search_filter)
-                | Q(**{f"{lang}__icontains": search_filter})
-            )
+                | Q(values__language=lang, values__value__icontains=search_filter)
+            ).distinct()
 
         no_refs_filter = request.GET.get("no_refs", "")
         if no_refs_filter and no_refs_filter.lower() == "true":
             queryset = queryset.filter(Q(refs=[]) | Q(refs__isnull=True))
 
         sort_filter = request.GET.get("sort", "default")
-        queryset = _apply_sort_order(queryset, sort_filter)
+        queryset = _apply_sort_order(queryset, sort_filter).prefetch_related("values")
 
         # Determine reference column: key or another language
         ref_col = request.GET.get("ref", "")
@@ -1073,14 +1078,14 @@ class DashboardLanguagePageView(AuthorizedTranslatorMixin, View):
             if ref_col == "key":
                 ref_value = entry.key
             else:
-                ref_value = getattr(entry, ref_col, "") or ""
+                ref_value = entry.get_value(ref_col) or ""
             translations.append(
                 {
                     "id": entry.id,
                     "key": entry.key,
                     "ref_value": ref_value,
-                    "value": getattr(entry, lang, "") or "",
-                    "verified": getattr(entry, f"{lang}_verified", False),
+                    "value": entry.get_value(lang) or "",
+                    "verified": entry.get_verified(lang),
                     "source": entry.source,
                     "comment": entry.comment,
                 }
@@ -1126,7 +1131,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
             queryset = queryset.filter(source=source_filter)
         if verified_filter:
             verified = verified_filter.lower() == "true"
-            queryset = queryset.filter(**{f"{current_lang}_verified": verified})
+            queryset = _filter_by_verified(queryset, current_lang, verified)
 
         queryset = _apply_sort_order(queryset, sort_filter)
         entries = list(queryset.values_list("id", "key"))
@@ -1162,7 +1167,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
                 {
                     "code": lang,
                     "name": LANGUAGE_NAMES.get(lang, lang),
-                    "verified": getattr(entry, f"{lang}_verified", False),
+                    "verified": entry.get_verified(lang),
                 }
             )
 
@@ -1173,8 +1178,8 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
                 {
                     "lang": lang,
                     "name": LANGUAGE_NAMES.get(lang, lang),
-                    "value": getattr(entry, lang, "") or "",
-                    "verified": getattr(entry, f"{lang}_verified", False),
+                    "value": entry.get_value(lang) or "",
+                    "verified": entry.get_verified(lang),
                 }
             )
 
@@ -1204,8 +1209,8 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
                 "translation": entry,
                 "current_lang": current_lang,
                 "current_lang_name": LANGUAGE_NAMES.get(current_lang, current_lang),
-                "current_value": getattr(entry, current_lang, "") or "",
-                "current_verified": getattr(entry, f"{current_lang}_verified", False),
+                "current_value": entry.get_value(current_lang) or "",
+                "current_verified": entry.get_verified(current_lang),
                 "languages": languages,
                 "show_lang_tabs": len(languages) > 1,
                 "all_translations": all_translations,
@@ -1262,7 +1267,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
                 qs = qs.filter(source=source_filter)
             if not force_advance and verified_filter:
                 verified = verified_filter.lower() == "true"
-                qs = qs.filter(**{f"{lang}_verified": verified})
+                qs = _filter_by_verified(qs, lang, verified)
             qs = _apply_sort_order(qs, sort_filter or "default")
             ids = list(qs.values_list("id", flat=True))
             try:
@@ -1277,22 +1282,22 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
                 pass
 
         # Get old values for history
-        old_value = getattr(entry, lang, "") or ""
-        old_verified = getattr(entry, f"{lang}_verified", False)
-
-        # Update value
-        setattr(entry, lang, value)
+        old_value = entry.get_value(lang) or ""
+        old_verified = entry.get_verified(lang)
 
         # Handle verify/unverify
         new_verified = old_verified
         if action in ("save_verify", "save_verify_next"):
-            setattr(entry, f"{lang}_verified", True)
             new_verified = True
         elif action == "save_unverify":
-            setattr(entry, f"{lang}_verified", False)
             new_verified = False
 
-        entry.save()
+        # Update value (and verified flag when it changed)
+        entry.set_value(
+            lang,
+            value,
+            verified=new_verified if new_verified != old_verified else None,
+        )
 
         # Record history if value changed
         if old_value != value:
@@ -1370,12 +1375,22 @@ class DashboardExportView(AuthorizedTranslatorMixin, View):
         format_type = request.POST.get("format", "json")  # 'json', 'xml', or 'fixture'
         sources = request.POST.getlist("sources")  # List of sources to include
 
-        # Django fixture format — full dump including deleted entries
+        # Django fixture format — full dump including deleted entries.
+        # Keeps the legacy flat shape: language values and *_verified flags
+        # are inlined into each entry's fields (round-trips with import).
         if format_type == "fixture":
-            fixture_qs = TranslationEntry.objects.all()
+            fixture_qs = TranslationEntry.objects.all().prefetch_related("values")
             if sources:
                 fixture_qs = fixture_qs.filter(source__in=sources)
-            content = serializers.serialize("json", fixture_qs, indent=2)
+            entries = list(fixture_qs)
+            data = json.loads(serializers.serialize("json", entries))
+            entries_by_pk = {entry.pk: entry for entry in entries}
+            for item in data:
+                entry = entries_by_pk[item["pk"]]
+                for lang in SUPPORTED_LANGUAGES:
+                    item["fields"][lang] = entry.get_value(lang)
+                    item["fields"][f"{lang}_verified"] = entry.get_verified(lang)
+            content = json.dumps(data, ensure_ascii=False, indent=2)
             response = HttpResponse(content, content_type="application/json")
             response["Content-Disposition"] = (
                 'attachment; filename="translations_fixture.json"'
@@ -1383,7 +1398,9 @@ class DashboardExportView(AuthorizedTranslatorMixin, View):
             return response
 
         # i18n/XML export — exclude deleted entries
-        queryset = TranslationEntry.objects.filter(deleted=False)
+        queryset = TranslationEntry.objects.filter(deleted=False).prefetch_related(
+            "values"
+        )
         if sources:
             queryset = queryset.filter(source__in=sources)
 
@@ -1414,7 +1431,7 @@ class DashboardExportView(AuthorizedTranslatorMixin, View):
         """Generate i18n JSON format."""
         translations = {}
         for entry in queryset:
-            value = getattr(entry, lang, None)
+            value = entry.get_value(lang)
             if value:
                 # Use key as-is for i18n
                 translations[entry.key] = value
@@ -1425,7 +1442,7 @@ class DashboardExportView(AuthorizedTranslatorMixin, View):
         root = Element("resources")
 
         for entry in queryset:
-            value = getattr(entry, lang, None)
+            value = entry.get_value(lang)
             if value:
                 # Convert key to valid Android resource name
                 android_key = self._to_android_key(entry.key)
@@ -1493,6 +1510,10 @@ class DashboardImportView(StaffOnlyMixin, View):
         updated_count = 0
         error_count = 0
 
+        entry_field_names = {
+            f.name for f in TranslationEntry._meta.concrete_fields
+        }
+
         for item in data:
             try:
                 fields = item.get("fields", {})
@@ -1501,19 +1522,30 @@ class DashboardImportView(StaffOnlyMixin, View):
                     error_count += 1
                     continue
 
-                # Exclude fields that should not be imported
+                # Split language values (legacy flat fixture shape) from
+                # real entry fields; exclude fields that should not be
+                # imported.
                 defaults = {
                     k: v
                     for k, v in fields.items()
-                    if k not in ("id", "revision", "deleted")
+                    if k in entry_field_names
+                    and k not in ("id", "key", "revision", "deleted")
                 }
-                defaults.pop("key", None)
                 defaults["deleted"] = False
 
                 entry, created = TranslationEntry.objects.update_or_create(
                     key=key,
                     defaults=defaults,
                 )
+                for lang in SUPPORTED_LANGUAGES:
+                    value = fields.get(lang)
+                    verified = fields.get(f"{lang}_verified")
+                    if value is not None or verified is not None:
+                        entry.set_value(
+                            lang,
+                            value=value,
+                            verified=bool(verified) if verified is not None else None,
+                        )
                 if created:
                     created_count += 1
                 else:

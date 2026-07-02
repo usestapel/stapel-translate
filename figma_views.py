@@ -40,6 +40,7 @@ from .figma_serializers import (
     FigmaTranslationsListResponseSerializer,
     FigmaTranslationUpsertResponseSerializer,
 )
+from .conf import LANGUAGE_NAMES
 from .models import (
     SUPPORTED_LANGUAGES,
     FigmaApiKey,
@@ -49,7 +50,12 @@ from .models import (
 
 
 class FigmaApiKeyAuthentication:
-    """Mixin for Figma API key authentication."""
+    """Mixin for Figma API key authentication.
+
+    Keys are looked up by their 8-char prefix and verified with a
+    constant-time comparison of SHA-256 hashes — the plaintext key is
+    never stored.
+    """
 
     def authenticate_figma(self, request):
         """
@@ -63,17 +69,17 @@ class FigmaApiKeyAuthentication:
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        try:
-            key_obj = FigmaApiKey.objects.get(id=api_key, is_active=True)
-            # Update last_used_at
-            key_obj.last_used_at = timezone.now()
-            key_obj.save(update_fields=["last_used_at"])
-            return key_obj, None
-        except (FigmaApiKey.DoesNotExist, ValueError):
+        key_obj = FigmaApiKey.authenticate(api_key)
+        if key_obj is None:
             return None, StapelResponse(
                 {"error": "Invalid or inactive API key"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
+        # Update last_used_at
+        key_obj.last_used_at = timezone.now()
+        key_obj.save(update_fields=["last_used_at"])
+        return key_obj, None
 
 
 @extend_schema(tags=["Figma Plugin"])
@@ -110,30 +116,6 @@ class FigmaAuthView(FigmaApiKeyAuthentication, APIView):
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
-
-        # Language names
-        LANGUAGE_NAMES = {
-            "en": "English",
-            "lb": "Luxembourgish",
-            "fr": "French",
-            "de": "German",
-            "es": "Spanish",
-            "pt": "Portuguese",
-            "it": "Italian",
-            "ru": "Russian",
-            "uk": "Ukrainian",
-            "pl": "Polish",
-            "ar": "Arabic",
-            "hi": "Hindi",
-            "zh": "Mandarin",
-            "tr": "Turkish",
-            "ko": "Korean",
-            "ja": "Japanese",
-            "sr": "Serbian",
-            "hr": "Croatian",
-            "hu": "Hungarian",
-            "he": "Hebrew",
-        }
 
         languages = [
             {"code": lang, "name": LANGUAGE_NAMES.get(lang, lang)}
@@ -210,13 +192,14 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
             entries = TranslationEntry.objects.filter(source="app:figma", deleted=False)
 
         translations = {}
-        for entry in entries:
-            value = getattr(entry, lang, None)
+        for entry in entries.prefetch_related("values"):
+            value = entry.get_value(lang)
+            en_value = entry.get_value("en")
             if value:
                 translations[entry.key] = value
-            elif entry.en:
+            elif en_value:
                 # Fallback to English
-                translations[entry.key] = entry.en
+                translations[entry.key] = en_value
 
         dto = FigmaTranslationsListResponse(
             translations=translations,
@@ -315,8 +298,6 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
             f"[FigmaCreate] key={key}, lang={lang}, verify={verify}, force={force}, figma_url={figma_url}"
         )
 
-        verified_field = f"{lang}_verified"
-
         # Check if key already exists - upsert logic (include soft-deleted)
         existing = TranslationEntry.objects.filter(key=key).first()
         if existing:
@@ -329,38 +310,50 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
             )
             metadata_fields = []  # tracks fields that don't need revision bump
             logger.info(
-                f"[FigmaCreate] Key exists, {verified_field}={getattr(existing, verified_field, False)}, refs={existing.refs}"
+                f"[FigmaCreate] Key exists, {lang}_verified={existing.get_verified(lang)}, refs={existing.refs}"
             )
 
-            is_verified = getattr(existing, verified_field, False)
-            old_value = getattr(existing, lang, "") or ""
+            is_verified = existing.get_verified(lang)
+            old_value = existing.get_value(lang) or ""
 
             # Update value only if NOT verified, or if force=True
             en_text_changed = False
-            if value and getattr(existing, lang, None) != value:
+            pending_value = None
+            cur_verified = is_verified
+            if value and (existing.get_value(lang) or None) != value:
                 if not is_verified or force:
-                    setattr(existing, lang, value)
+                    pending_value = value
                     translation_changed = True
                     if lang == "en":
                         en_text_changed = True
                     # If overriding a verified value, unset verified flag
                     if is_verified and force:
-                        setattr(existing, verified_field, False)
+                        cur_verified = False
                     logger.info(f"[FigmaCreate] Updated {lang} text")
 
             # When English text changes, reset ALL verified flags
             if en_text_changed:
-                for supported_lang in SUPPORTED_LANGUAGES:
-                    setattr(existing, f"{supported_lang}_verified", False)
+                cur_verified = False
                 logger.info(
                     "[FigmaCreate] English text changed — reset all verified flags"
                 )
 
             # Set verified flag if requested
-            old_verified = getattr(existing, verified_field, False)
+            old_verified = cur_verified
             if verify:
-                setattr(existing, verified_field, True)
+                cur_verified = True
                 translation_changed = True
+
+            # Apply per-language changes
+            if en_text_changed:
+                existing.values.update(verified=False)
+                existing.invalidate_values_cache()
+            if pending_value is not None or cur_verified != existing.get_verified(lang):
+                existing.set_value(
+                    lang,
+                    value=pending_value,
+                    verified=cur_verified,
+                )
 
             # Update translator_comment if user provided a comment
             if comment and existing.translator_comment != comment:
@@ -392,15 +385,17 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
                 if "order" not in metadata_fields:
                     metadata_fields.append("order")
 
-            if translation_changed:
-                # Translation value changed — full save to increment revision
+            if reactivated:
+                # Entry row itself changed — full save to persist `deleted`
+                # and increment revision
                 existing.save()
             elif metadata_fields:
                 # Only metadata changed — save with update_fields to skip revision
+                # (value/verified changes already bumped it via set_value)
                 existing.save(update_fields=metadata_fields)
 
             # Log translation change to history
-            new_value = getattr(existing, lang, "") or ""
+            new_value = existing.get_value(lang) or ""
             if old_value != new_value:
                 TranslationHistory.objects.create(
                     entry=existing,
@@ -414,7 +409,7 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
                 )
 
             # Log verification change
-            new_verified = getattr(existing, verified_field, False)
+            new_verified = existing.get_verified(lang)
             if old_verified != new_verified:
                 TranslationHistory.objects.create(
                     entry=existing,
@@ -443,14 +438,14 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
             dto = FigmaTranslationUpsertResponse(
                 id=existing.id,
                 key=existing.key,
-                value=getattr(existing, lang, "") or "",
+                value=existing.get_value(lang) or "",
                 comment=existing.comment,
                 translator_comment=existing.translator_comment,
                 refs=existing.refs,
                 order=existing.order,
                 created=False,
                 updated=translation_changed or bool(metadata_fields),
-                verified=getattr(existing, verified_field, False),
+                verified=existing.get_verified(lang),
             )
             return StapelResponse(FigmaTranslationUpsertResponseSerializer(dto))
 
@@ -466,10 +461,8 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
         )
         if order is not None:
             entry.order = order
-        setattr(entry, lang, value)
-        if verify:
-            setattr(entry, verified_field, True)
         entry.save()
+        entry.set_value(lang, value, verified=True if verify else None)
 
         # Log creation to history
         TranslationHistory.objects.create(
@@ -486,13 +479,13 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
         dto = FigmaTranslationUpsertResponse(
             id=entry.id,
             key=entry.key,
-            value=getattr(entry, lang, "") or "",
+            value=entry.get_value(lang) or "",
             comment=entry.comment,
             translator_comment=entry.translator_comment,
             refs=entry.refs,
             order=entry.order,
             created=True,
-            verified=getattr(entry, verified_field, False),
+            verified=entry.get_verified(lang),
         )
         return StapelResponse(
             FigmaTranslationUpsertResponseSerializer(dto),
@@ -559,21 +552,27 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, APIView):
         logger.info(f"[FigmaSearch] Looking for text: {repr(text)}")
 
         # Search for exact match on English text
-        entry = TranslationEntry.objects.filter(en=text, deleted=False).first()
+        entry = TranslationEntry.objects.filter(
+            values__language="en", values__value=text, deleted=False
+        ).first()
 
         if not entry:
             # Try case-insensitive search
             entry = TranslationEntry.objects.filter(
-                en__iexact=text, deleted=False
+                values__language="en", values__value__iexact=text, deleted=False
             ).first()
 
         if not entry:
             # Log what we have in DB for debugging
             similar = TranslationEntry.objects.filter(
-                en__icontains=text[:20] if len(text) > 20 else text, deleted=False
+                values__language="en",
+                values__value__icontains=text[:20] if len(text) > 20 else text,
+                deleted=False,
             ).first()
             if similar:
-                logger.info(f"[FigmaSearch] Similar entry found: {repr(similar.en)}")
+                logger.info(
+                    f"[FigmaSearch] Similar entry found: {repr(similar.get_value('en'))}"
+                )
 
         if not entry:
             dto = FigmaSearchResponse(found=False, entry=None, ref_added=False)
@@ -610,7 +609,7 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, APIView):
             entry={
                 "id": entry.id,
                 "key": entry.key,
-                "en": entry.en,
+                "en": entry.get_value("en"),
                 "comment": entry.comment,
                 "source": entry.source,
                 "refs": entry.refs,
@@ -664,7 +663,9 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, APIView):
             lang = "en"
 
         try:
-            entry = TranslationEntry.objects.get(key=key, deleted=False)
+            entry = TranslationEntry.objects.prefetch_related("values").get(
+                key=key, deleted=False
+            )
         except TranslationEntry.DoesNotExist:
             return StapelResponse(
                 {"error": f'Translation key "{key}" not found'},
@@ -672,19 +673,15 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, APIView):
             )
 
         # Get value for requested language (with English fallback)
-        value = getattr(entry, lang, None) or entry.en or ""
+        value = entry.get_value(lang) or entry.get_value("en") or ""
 
-        # Build all translations dict
-        all_translations = {}
-        for lang in SUPPORTED_LANGUAGES:
-            v = getattr(entry, lang, None)
-            if v:
-                all_translations[lang] = v
+        # Build all translations dict (non-empty values only)
+        all_translations = entry.values_dict()
 
         # Build verification status for all languages
-        verification_status = {}
-        for lang in SUPPORTED_LANGUAGES:
-            verification_status[lang] = getattr(entry, f"{lang}_verified", False)
+        verification_status = {
+            code: entry.get_verified(code) for code in SUPPORTED_LANGUAGES
+        }
 
         dto = FigmaTranslationDetailResponse(
             id=entry.id,
@@ -696,7 +693,7 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, APIView):
             source=entry.source,
             order=entry.order,
             all_translations=all_translations,
-            verified=getattr(entry, f"{lang}_verified", False),
+            verified=entry.get_verified(lang),
             verification_status=verification_status,
         )
         return StapelResponse(FigmaTranslationDetailResponseSerializer(dto))
@@ -802,14 +799,14 @@ class FigmaSyncView(FigmaApiKeyAuthentication, APIView):
                 existing = TranslationEntry.objects.filter(key=key).first()
                 if existing:
                     update_fields = []
+                    pending_en = None
                     # Reactivate soft-deleted entry
                     if existing.deleted:
                         existing.deleted = False
                         existing.source = "app:figma"
                         update_fields.extend(["deleted", "source"])
-                        if data["currentText"] and not existing.en:
-                            existing.en = data["currentText"]
-                            update_fields.append("en")
+                        if data["currentText"] and not existing.get_value("en"):
+                            pending_en = data["currentText"]
                     if existing.refs != data["refs"]:
                         existing.refs = data["refs"]
                         update_fields.append("refs")
@@ -819,22 +816,26 @@ class FigmaSyncView(FigmaApiKeyAuthentication, APIView):
                     if data["order"] is not None and existing.order != data["order"]:
                         existing.order = data["order"]
                         update_fields.append("order")
+                    if pending_en is not None:
+                        existing.set_value("en", pending_en)
                     if update_fields:
                         existing.save(update_fields=update_fields)
+                    if update_fields or pending_en is not None:
                         updated_count += 1
                 else:
-                    # Create new entry — never set translation values, only metadata
+                    # Create new entry — only metadata plus the current
+                    # English text captured from Figma
                     entry_obj = TranslationEntry(
                         key=key,
                         comment=comment,
                         source="app:figma",
                         refs=data["refs"],
                     )
-                    if data["currentText"]:
-                        entry_obj.en = data["currentText"]
                     if data["order"] is not None:
                         entry_obj.order = data["order"]
                     entry_obj.save()
+                    if data["currentText"]:
+                        entry_obj.set_value("en", data["currentText"])
                     created_count += 1
 
         logger.info(
