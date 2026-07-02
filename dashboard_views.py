@@ -50,6 +50,7 @@ from .models import (
 )
 from .permissions import (
     IsAuthorizedTranslator,
+    can_edit_language,
     get_translator_name,
     get_user_allowed_languages,
     is_privileged_user,
@@ -328,6 +329,14 @@ class TranslationDetailView(APIView):
         lang = serializer.validated_data["lang"]
         value = serializer.validated_data["value"]
 
+        # Enforce the translator's per-language scope on the API, not only
+        # on the HTML pages.
+        if not can_edit_language(request.user, lang):
+            return StapelResponse(
+                {"error": f"You are not allowed to edit language: {lang}"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         # Block non-privileged translators from editing verified translations
         # unless they themselves verified this key+language
         is_verified = getattr(entry, f"{lang}_verified", False)
@@ -397,6 +406,12 @@ class TranslationVerifyView(APIView):
 
         lang = serializer.validated_data["lang"]
         verified = serializer.validated_data["verified"]
+
+        if not can_edit_language(request.user, lang):
+            return StapelResponse(
+                {"error": f"You are not allowed to verify language: {lang}"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # Get old value for history
         old_verified = getattr(entry, f"{lang}_verified", False)
@@ -554,6 +569,18 @@ class LLMHelpView(APIView):
         if translate_all and not is_privileged_user(request.user):
             return StapelResponse(
                 {"error": "Only staff users can translate all languages"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Applying a suggestion is an edit — enforce per-language scope
+        if (
+            apply_translation
+            and not translate_all
+            and target_lang
+            and not can_edit_language(request.user, target_lang)
+        ):
+            return StapelResponse(
+                {"error": f"You are not allowed to edit language: {target_lang}"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

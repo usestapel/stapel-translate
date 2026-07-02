@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 keywords = ["django", "stapel", "translation", "i18n", "ai"]
 classifiers = [
     "Framework :: Django",
-    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -29,7 +29,7 @@ package-dir = {"stapel_translate" = "."}
 packages = ["stapel_translate", "stapel_translate.migrations", "stapel_translate.tests"]
 
 [tool.setuptools.package-data]
-stapel_translate = ["migrations/*.py", "migrations/**/*.py"]
+stapel_translate = ["migrations/*.py", "schemas/**/*.json", "templates/**/*", "migrations/**/*.py"]
 
 [tool.pytest.ini_options]
 django_find_project = false
