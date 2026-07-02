@@ -54,6 +54,12 @@ def get_user_allowed_languages(user):
     return None  # empty allowed_languages = all languages
 
 
+def can_edit_language(user, lang) -> bool:
+    """Check whether the user may edit/verify the given language."""
+    allowed = get_user_allowed_languages(user)
+    return allowed is None or lang in allowed
+
+
 def get_translator_name(user):
     """Get display name for history logging."""
     translator = get_translator_info(user)

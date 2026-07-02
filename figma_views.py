@@ -10,6 +10,7 @@ Endpoints:
 
 import logging
 
+from django.db import transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -752,10 +753,7 @@ class FigmaSyncView(FigmaApiKeyAuthentication, APIView):
                 {"error": "entries is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Step 1: Clear old figma refs/comments from all app:figma entries
-        TranslationEntry.objects.filter(source="app:figma").update(refs=[], comment="")
-
-        # Step 2: Aggregate entries by key
+        # Step 1: Aggregate entries by key (validate BEFORE touching the DB)
         by_key = {}
         for entry in entries:
             key = (entry.get("key") or "").strip()
@@ -779,51 +777,65 @@ class FigmaSyncView(FigmaApiKeyAuthentication, APIView):
             if entry.get("currentText"):
                 by_key[key]["currentText"] = entry["currentText"]
 
-        # Step 3: Rebuild refs, comment, order for each key
+        if not by_key:
+            return StapelResponse(
+                {"error": "entries contained no valid keys"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Steps 2–3 run atomically: a crash mid-rebuild must not leave the
+        # figma metadata half-wiped.
         created_count = 0
         updated_count = 0
 
-        for key, data in by_key.items():
-            comment_lines = [f"Screen: {name}" for name in data["screen_names"]]
-            comment = "\n".join(comment_lines)
+        with transaction.atomic():
+            # Clear refs/comments only for figma entries absent from this
+            # sync payload; entries in the payload are overwritten below.
+            TranslationEntry.objects.filter(source="app:figma").exclude(
+                key__in=by_key.keys()
+            ).update(refs=[], comment="")
 
-            existing = TranslationEntry.objects.filter(key=key).first()
-            if existing:
-                update_fields = []
-                # Reactivate soft-deleted entry
-                if existing.deleted:
-                    existing.deleted = False
-                    existing.source = "app:figma"
-                    update_fields.extend(["deleted", "source"])
-                    if data["currentText"] and not existing.en:
-                        existing.en = data["currentText"]
-                        update_fields.append("en")
-                if existing.refs != data["refs"]:
-                    existing.refs = data["refs"]
-                    update_fields.append("refs")
-                if existing.comment != comment:
-                    existing.comment = comment
-                    update_fields.append("comment")
-                if data["order"] is not None and existing.order != data["order"]:
-                    existing.order = data["order"]
-                    update_fields.append("order")
-                if update_fields:
-                    existing.save(update_fields=update_fields)
-                    updated_count += 1
-            else:
-                # Create new entry — never set translation values, only metadata
-                entry_obj = TranslationEntry(
-                    key=key,
-                    comment=comment,
-                    source="app:figma",
-                    refs=data["refs"],
-                )
-                if data["currentText"]:
-                    entry_obj.en = data["currentText"]
-                if data["order"] is not None:
-                    entry_obj.order = data["order"]
-                entry_obj.save()
-                created_count += 1
+            for key, data in by_key.items():
+                comment_lines = [f"Screen: {name}" for name in data["screen_names"]]
+                comment = "\n".join(comment_lines)
+
+                existing = TranslationEntry.objects.filter(key=key).first()
+                if existing:
+                    update_fields = []
+                    # Reactivate soft-deleted entry
+                    if existing.deleted:
+                        existing.deleted = False
+                        existing.source = "app:figma"
+                        update_fields.extend(["deleted", "source"])
+                        if data["currentText"] and not existing.en:
+                            existing.en = data["currentText"]
+                            update_fields.append("en")
+                    if existing.refs != data["refs"]:
+                        existing.refs = data["refs"]
+                        update_fields.append("refs")
+                    if existing.comment != comment:
+                        existing.comment = comment
+                        update_fields.append("comment")
+                    if data["order"] is not None and existing.order != data["order"]:
+                        existing.order = data["order"]
+                        update_fields.append("order")
+                    if update_fields:
+                        existing.save(update_fields=update_fields)
+                        updated_count += 1
+                else:
+                    # Create new entry — never set translation values, only metadata
+                    entry_obj = TranslationEntry(
+                        key=key,
+                        comment=comment,
+                        source="app:figma",
+                        refs=data["refs"],
+                    )
+                    if data["currentText"]:
+                        entry_obj.en = data["currentText"]
+                    if data["order"] is not None:
+                        entry_obj.order = data["order"]
+                    entry_obj.save()
+                    created_count += 1
 
         logger.info(
             f"[FigmaSync] Synced {len(by_key)} keys: {created_count} created, {updated_count} updated"
