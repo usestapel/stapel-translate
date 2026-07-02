@@ -23,7 +23,7 @@ from stapel_core.django.openapi.schemas import (
 )
 
 from .dto import LanguageRevisionResponse
-from .models import SUPPORTED_LANGUAGES, TranslationEntry
+from .models import SUPPORTED_LANGUAGES, TranslationEntry, TranslationValue
 from .serializers import LanguageRevisionResponseSerializer, TranslationEntrySerializer
 
 
@@ -34,7 +34,7 @@ from .serializers import LanguageRevisionResponseSerializer, TranslationEntrySer
 )
 @extend_schema(tags=["Translations"])
 class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = TranslationEntry.objects.filter(deleted=False)
+    queryset = TranslationEntry.objects.filter(deleted=False).prefetch_related("values")
     serializer_class = TranslationEntrySerializer
     permission_classes = [ReadOnlyOrSuperUser]
     pagination_class = RevisionPagination
@@ -70,16 +70,12 @@ class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSe
             if not key:
                 continue  # skip invalid entries
 
-            defaults = {
-                lang: item.get(lang)
-                for lang in ["en", "ru", "de", "fr", "es", "it", "pt"]
-                if lang in item
-            }
-            defaults["deleted"] = False
-
             obj, _ = TranslationEntry.objects.update_or_create(
-                key=key, defaults=defaults
+                key=key, defaults={"deleted": False}
             )
+            for lang in ["en", "ru", "de", "fr", "es", "it", "pt"]:
+                if lang in item:
+                    obj.set_value(lang, item.get(lang) or "")
             updated.append(obj.pk)
 
         return StapelResponse({"updated_ids": updated}, status=status.HTTP_200_OK)
@@ -160,11 +156,13 @@ max revision from `/translations/revision` endpoint.
 
         if cached_data is None:
             # Build key-value dict for this language
-            cached_data = {}
-            for entry in TranslationEntry.objects.filter(deleted=False):
-                value = getattr(entry, lang, None)
-                if value:
-                    cached_data[entry.key] = value
+            cached_data = dict(
+                TranslationValue.objects.filter(
+                    entry__deleted=False, language=lang
+                )
+                .exclude(value="")
+                .values_list("entry__key", "value")
+            )
 
             # Cache in Redis for 5 minutes
             cache.set(cache_key, cached_data, timeout=300)

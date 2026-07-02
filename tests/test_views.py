@@ -37,11 +37,9 @@ def sample_translations(db):
     """Create sample translations"""
     entries = []
     for i in range(3):
-        entry = TranslationEntry.objects.create(
-            key=f'test.key.{i}',
-            en=f'English {i}',
-            ru=f'Русский {i}',
-        )
+        entry = TranslationEntry.objects.create(key=f'test.key.{i}')
+        entry.set_value('en', f'English {i}')
+        entry.set_value('ru', f'Русский {i}')
         entries.append(entry)
     return entries
 
@@ -61,6 +59,20 @@ class TestTranslationViewSetList:
         response = api_client.get('/translate/api/translations/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 3
+
+    def test_list_translations_flat_language_shape(self, api_client, sample_translations):
+        """Entries keep the legacy flat <lang>/<lang>_verified shape."""
+        response = api_client.get('/translate/api/translations/')
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data['results']
+        assert len(results) == 3
+        item = next(e for e in results if e['key'] == 'test.key.0')
+        assert item['en'] == 'English 0'
+        assert item['ru'] == 'Русский 0'
+        assert item['en_verified'] is False
+        # every configured language is present, even when empty
+        assert 'he' in item and item['he'] is None
+        assert 'he_verified' in item and item['he_verified'] is False
 
 
 @pytest.mark.django_db
@@ -89,7 +101,10 @@ class TestTranslationBulkUpdate:
         response = api_client.post('/translate/api/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['updated_ids']) == 2
-        assert TranslationEntry.objects.filter(key='bulk.1').exists()
+        entry = TranslationEntry.objects.filter(key='bulk.1').first()
+        assert entry is not None
+        assert entry.get_value('en') == 'English 1'
+        assert entry.get_value('ru') == 'Русский 1'
 
     def test_bulk_update_regular_user_forbidden(self, api_client, regular_user):
         api_client.force_authenticate(user=regular_user)
@@ -110,4 +125,52 @@ class TestTranslationBulkUpdate:
         response = api_client.post('/translate/api/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_200_OK
         entry.refresh_from_db()
-        assert entry.en == 'Updated English'
+        entry.invalidate_values_cache()
+        assert entry.get_value('en') == 'Updated English'
+
+
+@pytest.mark.django_db
+class TestLanguageDataView:
+    """Tests for the per-language key-value data endpoint."""
+
+    def test_language_data_dict_shape(self, api_client, sample_translations):
+        response = api_client.get('/translate/api/languages/en/data/?revision=1')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {
+            'test.key.0': 'English 0',
+            'test.key.1': 'English 1',
+            'test.key.2': 'English 2',
+        }
+        assert response['Cache-Control'] == 'public, max-age=2592000'
+
+    def test_language_data_other_language(self, api_client, sample_translations):
+        response = api_client.get('/translate/api/languages/ru/data/?revision=1')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['test.key.0'] == 'Русский 0'
+
+    def test_language_data_skips_empty_values(self, api_client, sample_translations, db):
+        from django.core.cache import cache
+        cache.clear()
+        entry = TranslationEntry.objects.create(key='empty.value')
+        entry.set_value('en', '')
+        response = api_client.get('/translate/api/languages/en/data/?revision=2')
+        assert 'empty.value' not in response.data
+
+    def test_language_data_requires_revision(self, api_client, sample_translations):
+        response = api_client.get('/translate/api/languages/en/data/')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_language_data_invalid_language(self, api_client, sample_translations):
+        response = api_client.get('/translate/api/languages/xx/data/?revision=1')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_language_revision_increases_on_set_value(self, api_client, sample_translations):
+        response = api_client.get('/translate/api/languages/revision/')
+        assert response.status_code == status.HTTP_200_OK
+        before = response.data['revision']
+        assert before > 0
+
+        sample_translations[0].set_value('de', 'Deutsch')
+
+        response = api_client.get('/translate/api/languages/revision/')
+        assert response.data['revision'] == before + 1

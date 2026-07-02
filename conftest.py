@@ -28,6 +28,8 @@ def pytest_configure(config):
             },
             # In-memory bus — no Kafka/Redis broker needed
             STAPEL_BUS_BACKEND="stapel_core.bus.backends.memory.MemoryBus",
+            # Deliver comm actions synchronously in-process (no outbox tables)
+            STAPEL_COMM={"OUTBOX_ENABLED": False, "ACTION_TRANSPORT": "inprocess"},
             # Skip migrations — create tables directly from models
             MIGRATION_MODULES={
                 "users": None,

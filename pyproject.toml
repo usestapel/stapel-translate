@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stapel-translate"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI-powered content translation Django app for the Stapel framework"
 readme = "README.md"
 license = { text = "MIT" }
@@ -29,7 +29,7 @@ package-dir = {"stapel_translate" = "."}
 packages = ["stapel_translate", "stapel_translate.migrations", "stapel_translate.tests"]
 
 [tool.setuptools.package-data]
-stapel_translate = ["migrations/*.py", "schemas/**/*.json", "templates/**/*", "migrations/**/*.py"]
+stapel_translate = ["py.typed", "migrations/*.py", "schemas/**/*.json", "templates/**/*", "migrations/**/*.py"]
 
 [tool.pytest.ini_options]
 django_find_project = false

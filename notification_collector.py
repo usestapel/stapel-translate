@@ -65,13 +65,15 @@ def collect_notification_keys():
                 "source": "backend:notifications",
                 "comment": "Notification template",
                 "refs": [url],
-                "en": english_default,
             },
         )
         if created:
+            if english_default:
+                entry.set_value("en", english_default)
             created_count += 1
         else:
             updated = False
+            en_updated = False
             # Reactivate soft-deleted entry
             if entry.deleted:
                 entry.deleted = False
@@ -88,11 +90,12 @@ def collect_notification_keys():
                 entry.refs = current_refs
                 updated = True
             # Set en only if empty (never overwrite manual edits)
-            if not entry.en and english_default:
-                entry.en = english_default
-                updated = True
+            if not entry.get_value("en") and english_default:
+                entry.set_value("en", english_default)
+                en_updated = True
             if updated:
                 entry.save()
+            if updated or en_updated:
                 updated_count += 1
 
     return {
