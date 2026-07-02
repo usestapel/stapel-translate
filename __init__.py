@@ -17,6 +17,9 @@ _LAZY_EXPORTS = {
     "emit_translations_changed": (".events", "emit_translations_changed"),
     "TRANSLATIONS_CHANGED": (".events", "TRANSLATIONS_CHANGED"),
     "get_cache_key": (".utils", "get_cache_key"),
+    "register_collector": (".collectors", "register_collector"),
+    "autofill_missing": (".autofill", "autofill_missing"),
+    "get_llm_provider": (".providers", "get_llm_provider"),
 }
 
 __all__ = sorted(_LAZY_EXPORTS)

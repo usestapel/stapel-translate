@@ -8,6 +8,7 @@ def pytest_configure(config):
                 "django.contrib.auth",
                 "django.contrib.sessions",
                 "stapel_core.django.users",
+                "stapel_core.django.taskstore",
                 "rest_framework",
                 "stapel_translate",
             ],
@@ -34,5 +35,6 @@ def pytest_configure(config):
             MIGRATION_MODULES={
                 "users": None,
                 "translate": None,
+                "stapel_tasks": None,
             },
         )

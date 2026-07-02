@@ -72,6 +72,13 @@ translate_settings = AppSettings(
         "LANGUAGES": list(DEFAULT_LANGUAGES),
         "DEFAULT_LANGUAGE": "en",
         "LANGUAGE_NAMES": dict(DEFAULT_LANGUAGE_NAMES),
+        # Autofill LLM provider seam — dotted path to a class with
+        # translate(key, english_text, target_language, context) -> str.
+        "LLM_PROVIDER": "stapel_translate.providers.AgentProvider",
+        # OpenAICompatibleProvider configuration.
+        "LLM_OPENAI_BASE_URL": "https://api.openai.com/v1",
+        "LLM_OPENAI_API_KEY": "",
+        "LLM_OPENAI_MODEL": "gpt-4o-mini",
     },
 )
 

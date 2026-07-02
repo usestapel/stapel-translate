@@ -15,3 +15,6 @@ class TranslateConfig(AppConfig):
         # Action subscriptions (in-process in a monolith, bus consumer in
         # microservices — same code, transport chosen by STAPEL_COMM).
         from . import actions  # noqa: F401
+
+        # Comm task handlers (translate.autofill).
+        from . import tasks  # noqa: F401

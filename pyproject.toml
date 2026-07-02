@@ -26,10 +26,16 @@ all = ["stapel-translate[kafka]"]
 
 [tool.setuptools]
 package-dir = {"stapel_translate" = "."}
-packages = ["stapel_translate", "stapel_translate.migrations", "stapel_translate.tests"]
+packages = [
+    "stapel_translate",
+    "stapel_translate.management",
+    "stapel_translate.management.commands",
+    "stapel_translate.migrations",
+    "stapel_translate.tests",
+]
 
 [tool.setuptools.package-data]
-stapel_translate = ["py.typed", "migrations/*.py", "schemas/**/*.json", "templates/**/*", "migrations/**/*.py"]
+stapel_translate = ["py.typed", "migrations/*.py", "schemas/**/*.json", "templates/**/*", "migrations/**/*.py", "fixtures/builtin/*.json"]
 
 [tool.pytest.ini_options]
 django_find_project = false
