@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- comm Function `translate.resolve` (`functions.py`, registered from
+  `TranslateConfig.ready()`): input `{"keys": [str], "language": str}`,
+  output `{"values": {key: text}}`. Resolves `TranslationValue` rows for the
+  requested language with fallback to the `DEFAULT_LANGUAGE` value; keys
+  with no non-empty value in either language are omitted (never null).
+  Soft-deleted entries are never resolved. Contract committed as
+  `schemas/functions/translate.resolve.json` (input schema,
+  `additionalProperties: false`). `translations.changed` stays a thin
+  invalidation event — consumers pull values via `translate.resolve`.
+- `manage.py dump_translations --out <dir> [--source backend:notifications]
+  [--languages en,de] [--verified-only]` — the inverse of
+  `load_builtin_translations`. Writes one JSON file per language
+  (`{key: text}`), sorted keys, 2-space indent, `ensure_ascii=False`,
+  trailing newline: deterministic, byte-stable output that round-trips with
+  `load_builtin_translations`. Skips soft-deleted entries and empty values;
+  `--source` may be repeated.
+
+### Removed
+- Orphan `schemas/consumes/user.deletion_initiated.json`: translate had no
+  handler for it and needs none — `user.deletion_initiated` only starts the
+  reversible 30-day grace period (account deactivation happens in the GDPR
+  orchestrator), while translate's per-user data (`AuthorizedTranslator`,
+  `TranslationHistory.author_email`) is erased/anonymized on the final
+  `user.deleted` event, which is already handled in `actions.py` via
+  `TranslateGDPRProvider`. Acting at initiation would be irreversible with
+  no `deletion_cancelled` consume to undo it.
+
+
 ## 0.3.0 — 2026-07-03
 
 ### Added

@@ -18,3 +18,6 @@ class TranslateConfig(AppConfig):
 
         # Comm task handlers (translate.autofill).
         from . import tasks  # noqa: F401
+
+        # Comm Function providers (translate.resolve).
+        from . import functions  # noqa: F401

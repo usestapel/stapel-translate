@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "translate.resolve",
+  "description": "Resolve translation values for a set of keys in one language. Falls back to the DEFAULT_LANGUAGE value when the target language has none; keys with no value in either are omitted. Returns {values: {key: text}}.",
+  "type": "object",
+  "properties": {
+    "keys": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Translation keys to resolve."
+    },
+    "language": {
+      "type": "string",
+      "description": "Target language code (e.g. 'de')."
+    }
+  },
+  "required": ["keys", "language"],
+  "additionalProperties": false
+}
