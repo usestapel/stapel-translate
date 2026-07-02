@@ -43,6 +43,7 @@ from .dto import (
     NavigationResponse,
 )
 from .conf import LANGUAGE_NAMES
+from .mixins import SerializerSeamMixin
 from .models import (
     SUPPORTED_LANGUAGES,
     AuthorizedTranslator,
@@ -110,7 +111,7 @@ def _language_stats(entry_queryset):
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class DashboardStatsView(APIView):
+class DashboardStatsView(SerializerSeamMixin, APIView):
     """
     Get translation statistics by language.
 
@@ -118,6 +119,7 @@ class DashboardStatsView(APIView):
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    response_serializer_class = DashboardStatsResponseSerializer
 
     @extend_schema(
         description="Get translation statistics by language.",
@@ -162,11 +164,11 @@ class DashboardStatsView(APIView):
         dto = DashboardStatsResponse(
             languages=languages_stats, total_entries=total_entries
         )
-        return StapelResponse(DashboardStatsResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class LanguageTranslationsView(APIView):
+class LanguageTranslationsView(SerializerSeamMixin, APIView):
     """
     List translations for a specific language.
 
@@ -174,6 +176,7 @@ class LanguageTranslationsView(APIView):
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    response_serializer_class = TranslationListSerializer
 
     @extend_schema(
         description="List translations for a specific language.",
@@ -254,17 +257,21 @@ class LanguageTranslationsView(APIView):
         sort_param = request.query_params.get("sort", "default")
         queryset = _apply_sort_order(queryset, sort_param).prefetch_related("values")
 
-        serializer = TranslationListSerializer(queryset, many=True, language=lang)
+        serializer = self.get_response_serializer_class()(
+            queryset, many=True, language=lang
+        )
         return StapelResponse(serializer)
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class TranslationDetailView(APIView):
+class TranslationDetailView(SerializerSeamMixin, APIView):
     """
     Get or update a single translation.
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    request_serializer_class = TranslationUpdateSerializer
+    response_serializer_class = TranslationDetailSerializer
 
     @extend_schema(
         description="Get translation detail with all languages.",
@@ -278,7 +285,7 @@ class TranslationDetailView(APIView):
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = TranslationDetailSerializer(entry)
+        serializer = self.get_response_serializer_class()(entry)
         return StapelResponse(serializer)
 
     @extend_schema(
@@ -331,7 +338,7 @@ class TranslationDetailView(APIView):
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = TranslationUpdateSerializer(data=request.data)
+        serializer = self.get_request_serializer_class()(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         lang = serializer.validated_data["lang"]
@@ -384,16 +391,18 @@ class TranslationDetailView(APIView):
                 source="manual",
             )
 
-        return StapelResponse(TranslationDetailSerializer(entry))
+        return StapelResponse(self.get_response_serializer_class()(entry))
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class TranslationVerifyView(APIView):
+class TranslationVerifyView(SerializerSeamMixin, APIView):
     """
     Verify or unverify a translation for a specific language.
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    request_serializer_class = TranslationVerifySerializer
+    response_serializer_class = TranslationDetailSerializer
 
     @extend_schema(
         description="Verify or unverify a translation.",
@@ -408,7 +417,7 @@ class TranslationVerifyView(APIView):
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = TranslationVerifySerializer(data=request.data)
+        serializer = self.get_request_serializer_class()(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         lang = serializer.validated_data["lang"]
@@ -440,16 +449,18 @@ class TranslationVerifyView(APIView):
                 source="manual",
             )
 
-        return StapelResponse(TranslationDetailSerializer(entry))
+        return StapelResponse(self.get_response_serializer_class()(entry))
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class TranslatorCommentView(APIView):
+class TranslatorCommentView(SerializerSeamMixin, APIView):
     """
     Update translator comment for a translation.
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    request_serializer_class = TranslatorCommentSerializer
+    response_serializer_class = TranslationDetailSerializer
 
     @extend_schema(
         description="Update translator comment.",
@@ -464,22 +475,23 @@ class TranslatorCommentView(APIView):
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = TranslatorCommentSerializer(data=request.data)
+        serializer = self.get_request_serializer_class()(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         entry.translator_comment = serializer.validated_data["translator_comment"]
         entry.save()
 
-        return StapelResponse(TranslationDetailSerializer(entry))
+        return StapelResponse(self.get_response_serializer_class()(entry))
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class TranslationNavigationView(APIView):
+class TranslationNavigationView(SerializerSeamMixin, APIView):
     """
     Get prev/next translation IDs for navigation.
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    response_serializer_class = NavigationResponseSerializer
 
     @extend_schema(
         description="Get prev/next translation IDs for navigation.",
@@ -544,17 +556,26 @@ class TranslationNavigationView(APIView):
             next_id = None
 
         dto = NavigationResponse(prev_id=prev_id, next_id=next_id)
-        return StapelResponse(NavigationResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Translator Dashboard"])
-class LLMHelpView(APIView):
+class LLMHelpView(SerializerSeamMixin, APIView):
     """
     Get LLM-assisted translation suggestion.
     Supports single language or all languages (for staff/superuser).
     """
 
     permission_classes = [IsAuthorizedTranslator]
+    request_serializer_class = LLMHelpRequestSerializer
+    single_response_serializer_class = LLMSingleTranslationResponseSerializer
+    all_response_serializer_class = LLMAllTranslationsResponseSerializer
+
+    def get_single_response_serializer_class(self):
+        return self.single_response_serializer_class
+
+    def get_all_response_serializer_class(self):
+        return self.all_response_serializer_class
 
     @extend_schema(
         description="Get LLM translation suggestion for a specific language or all languages.",
@@ -562,7 +583,7 @@ class LLMHelpView(APIView):
         responses={200: LLMSingleTranslationResponseSerializer},
     )
     def post(self, request):
-        serializer = LLMHelpRequestSerializer(data=request.data)
+        serializer = self.get_request_serializer_class()(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         translation_id = serializer.validated_data["translation_id"]
@@ -665,9 +686,9 @@ class LLMHelpView(APIView):
                 value = entry.get_value(lang)
                 if value:
                     is_verified = entry.get_verified(lang)
-                    status = "[VERIFIED]" if is_verified else "[unverified]"
+                    verified_label = "[VERIFIED]" if is_verified else "[unverified]"
                     prompt_parts.append(
-                        f'- {LANGUAGE_NAMES.get(lang, lang)} {status}: "{value}"'
+                        f'- {LANGUAGE_NAMES.get(lang, lang)} {verified_label}: "{value}"'
                     )
 
             prompt_parts.append(
@@ -754,7 +775,7 @@ class LLMHelpView(APIView):
                     target_lang=target_lang,
                     source_context=context_translations,
                 )
-                return StapelResponse(LLMSingleTranslationResponseSerializer(dto))
+                return StapelResponse(self.get_single_response_serializer_class()(dto))
             else:
                 return StapelResponse(
                     {"error": "LLM service returned non-ok status"},
@@ -899,7 +920,7 @@ class LLMHelpView(APIView):
                     translate_all=True,
                     source_context=context_translations,
                 )
-                return StapelResponse(LLMAllTranslationsResponseSerializer(dto))
+                return StapelResponse(self.get_all_response_serializer_class()(dto))
             else:
                 return StapelResponse(
                     {"error": "LLM service returned non-ok status"},

@@ -23,6 +23,7 @@ from stapel_core.django.openapi.schemas import (
 )
 
 from .dto import LanguageRevisionResponse
+from .mixins import SerializerSeamMixin
 from .models import SUPPORTED_LANGUAGES, TranslationEntry, TranslationValue
 from .serializers import LanguageRevisionResponseSerializer, TranslationEntrySerializer
 
@@ -173,10 +174,11 @@ max revision from `/translations/revision` endpoint.
 
 
 @extend_schema(tags=["Translations"])
-class LanguageRevisionView(APIView):
+class LanguageRevisionView(SerializerSeamMixin, APIView):
     """Get the current maximum revision for translations."""
 
     permission_classes = [ReadOnlyOrSuperUser]
+    response_serializer_class = LanguageRevisionResponseSerializer
 
     @extend_schema(
         description="Get the current maximum revision number for translations.",
@@ -188,4 +190,4 @@ class LanguageRevisionView(APIView):
             TranslationEntry.objects.aggregate(max_rev=Max("revision"))["max_rev"] or 0
         )
         dto = LanguageRevisionResponse(revision=max_rev)
-        return StapelResponse(LanguageRevisionResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))

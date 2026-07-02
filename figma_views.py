@@ -41,6 +41,7 @@ from .figma_serializers import (
     FigmaTranslationUpsertResponseSerializer,
 )
 from .conf import LANGUAGE_NAMES
+from .mixins import SerializerSeamMixin
 from .models import (
     SUPPORTED_LANGUAGES,
     FigmaApiKey,
@@ -83,11 +84,12 @@ class FigmaApiKeyAuthentication:
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaAuthView(FigmaApiKeyAuthentication, APIView):
+class FigmaAuthView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Validate Figma API key."""
 
     authentication_classes = []
     permission_classes = []
+    response_serializer_class = FigmaAuthResponseSerializer
 
     @extend_schema(
         description="Validate Figma API key and return supported languages.",
@@ -127,15 +129,23 @@ class FigmaAuthView(FigmaApiKeyAuthentication, APIView):
             name=key_obj.name,
             languages=languages,
         )
-        return StapelResponse(FigmaAuthResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
+class FigmaTranslationsView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Create translation entry or get all translations."""
 
     authentication_classes = []
     permission_classes = []
+    list_response_serializer_class = FigmaTranslationsListResponseSerializer
+    upsert_response_serializer_class = FigmaTranslationUpsertResponseSerializer
+
+    def get_list_response_serializer_class(self):
+        return self.list_response_serializer_class
+
+    def get_upsert_response_serializer_class(self):
+        return self.upsert_response_serializer_class
 
     @extend_schema(
         description="Get translations for Figma plugin. By default returns only figma-source translations.",
@@ -206,7 +216,7 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
             language=lang,
             count=len(translations),
         )
-        return StapelResponse(FigmaTranslationsListResponseSerializer(dto))
+        return StapelResponse(self.get_list_response_serializer_class()(dto))
 
     @extend_schema(
         description="Create or update a translation entry from Figma.",
@@ -447,7 +457,7 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
                 updated=translation_changed or bool(metadata_fields),
                 verified=existing.get_verified(lang),
             )
-            return StapelResponse(FigmaTranslationUpsertResponseSerializer(dto))
+            return StapelResponse(self.get_upsert_response_serializer_class()(dto))
 
         # Create new translation entry with figma_url as ref
         refs = [figma_url] if figma_url else []
@@ -488,17 +498,18 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, APIView):
             verified=entry.get_verified(lang),
         )
         return StapelResponse(
-            FigmaTranslationUpsertResponseSerializer(dto),
+            self.get_upsert_response_serializer_class()(dto),
             status=status.HTTP_201_CREATED,
         )
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaSearchByTextView(FigmaApiKeyAuthentication, APIView):
+class FigmaSearchByTextView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Search for translation by exact English text match."""
 
     authentication_classes = []
     permission_classes = []
+    response_serializer_class = FigmaSearchResponseSerializer
 
     @extend_schema(
         description="Search for translation by exact English text match. If found, suggests linking.",
@@ -576,7 +587,7 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, APIView):
 
         if not entry:
             dto = FigmaSearchResponse(found=False, entry=None, ref_added=False)
-            return StapelResponse(FigmaSearchResponseSerializer(dto))
+            return StapelResponse(self.get_response_serializer_class()(dto))
 
         # Add figma_url to refs if provided and not already there
         ref_added = False
@@ -616,15 +627,16 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, APIView):
             },
             ref_added=ref_added,
         )
-        return StapelResponse(FigmaSearchResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaTranslationDetailView(FigmaApiKeyAuthentication, APIView):
+class FigmaTranslationDetailView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Get translation by key."""
 
     authentication_classes = []
     permission_classes = []
+    response_serializer_class = FigmaTranslationDetailResponseSerializer
 
     @extend_schema(
         description="Get translation by key with verification status.",
@@ -696,15 +708,16 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, APIView):
             verified=entry.get_verified(lang),
             verification_status=verification_status,
         )
-        return StapelResponse(FigmaTranslationDetailResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaSyncView(FigmaApiKeyAuthentication, APIView):
+class FigmaSyncView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Bulk sync Figma nodes — updates refs, comments, order for all entries."""
 
     authentication_classes = []
     permission_classes = []
+    response_serializer_class = FigmaSyncResponseSerializer
 
     @extend_schema(
         description="Bulk sync all Figma translatable nodes. Clears old figma refs then rebuilds.",
@@ -847,15 +860,16 @@ class FigmaSyncView(FigmaApiKeyAuthentication, APIView):
             created=created_count,
             updated=updated_count,
         )
-        return StapelResponse(FigmaSyncResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaRemoveRefView(FigmaApiKeyAuthentication, APIView):
+class FigmaRemoveRefView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Remove a ref from a translation entry."""
 
     authentication_classes = []
     permission_classes = []
+    response_serializer_class = FigmaRemoveRefResponseSerializer
 
     @extend_schema(
         description="Remove a Figma URL ref from a translation entry by key.",
@@ -939,15 +953,16 @@ class FigmaRemoveRefView(FigmaApiKeyAuthentication, APIView):
             ref_removed=ref_removed,
             refs=entry.refs or [],
         )
-        return StapelResponse(FigmaRemoveRefResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
 
 
 @extend_schema(tags=["Figma Plugin"])
-class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, APIView):
+class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
     """Upload a Figma screen screenshot for a translation key."""
 
     authentication_classes = []
     permission_classes = []
+    response_serializer_class = FigmaScreenshotUploadResponseSerializer
 
     @extend_schema(
         description="Upload a screenshot of the Figma screen where a translation key is used.",
@@ -1013,4 +1028,4 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, APIView):
         logger.info(f"[FigmaScreenshot] Saved screenshot for key={key}")
 
         dto = FigmaScreenshotUploadResponse(key=key, uploaded=True)
-        return StapelResponse(FigmaScreenshotUploadResponseSerializer(dto))
+        return StapelResponse(self.get_response_serializer_class()(dto))
