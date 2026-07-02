@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-07-03
+
+### Added
+- LLM autofill pipeline: `autofill.py` + pluggable dotted-path providers,
+  consolidated collectors, management commands (collect/backlog/autofill),
+  celery tasks, builtin translation fixtures shipped in the wheel.
+
+
 ## 0.2.0 — 2026-07-02
 
 ### Changed — row-per-language storage (BREAKING at the ORM level, API-compatible)
