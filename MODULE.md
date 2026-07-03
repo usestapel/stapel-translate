@@ -43,10 +43,14 @@ name → environment variable → default.
 | `LANGUAGES` | `DEFAULT_LANGUAGES` (20 codes, `en`…`he`) | List of codes; Django-style `(code, name)` tuples accepted (codes extracted); Django's untouched global `LANGUAGES` default is ignored |
 | `DEFAULT_LANGUAGE` | `"en"` | Source/fallback language for `translate.resolve` and autofill |
 | `LANGUAGE_NAMES` | `DEFAULT_LANGUAGE_NAMES` | `{code: display name}`; merged over the builtin names |
-| `LLM_PROVIDER` | `"stapel_translate.providers.AgentProvider"` | **Dotted-path seam.** Resolved with `import_string` in `get_llm_provider()` (a class object is also accepted). Contract: class with `translate(key, english_text, target_language, context) -> str`; subclass `providers.BaseTranslationProvider` to reuse prompt building; raise `TranslationProviderError` on failure. Builtin alternative: `OpenAICompatibleProvider` |
+| `LLM_PROVIDER` | `"stapel_translate.providers.AgentProvider"` | **Dotted-path seam.** Resolved with `import_string` in `get_llm_provider()` (a class object is also accepted). Contract: class with `translate(key, english_text, target_language, context) -> str`; subclass `providers.BaseTranslationProvider` to reuse prompt building; raise `TranslationProviderError` on failure. Builtin alternatives: `CommAgentProvider` (same agent facade via the `llm.complete` comm Function — in-process in a monolith, NATS in microservices), `OpenAICompatibleProvider` |
 | `LLM_OPENAI_BASE_URL` | `"https://api.openai.com/v1"` | For `OpenAICompatibleProvider` |
 | `LLM_OPENAI_API_KEY` | `""` | For `OpenAICompatibleProvider` |
 | `LLM_OPENAI_MODEL` | `"gpt-4o-mini"` | For `OpenAICompatibleProvider` |
+| `AGENT_SERVICE_URL` | `"http://stapel-agent:3000/agent"` | stapel-agent base URL for `AgentProvider` and the dashboard/admin LLM-help calls (env var of the same name keeps working via the AppSettings fallback; previously a raw `os.getenv` at import time) |
+| `AGENT_MODEL_SIZE` | `"medium"` | Model size sent to the agent (`small`/`medium`/`large`) |
+| `AGENT_PROVIDER` | `""` | Agent-side provider name; empty lets the agent's `DEFAULT_PROVIDER` decide (previously hardcoded `"claude-code"`) |
+| `NOTIFICATIONS_URL` | `"http://stapel-notifications:8000"` | notifications service base URL for the notification-keys collector (previously a raw `os.getenv`) |
 
 ### Functions — `translate.resolve` (`functions.py`)
 

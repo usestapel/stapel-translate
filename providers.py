@@ -13,9 +13,14 @@ The autofill task obtains its provider through
 
 Builtin providers:
 
-- ``AgentProvider`` (default) — proxies to the stapel-agent service
-  (``POST {AGENT_SERVICE_URL}/api/llm/complete``), exactly the call the
-  dashboard's LLM-help button makes today.
+- ``AgentProvider`` (default) — proxies to the stapel-agent service over
+  HTTP (``POST {AGENT_SERVICE_URL}/api/llm/complete``), exactly the call
+  the dashboard's LLM-help button makes today. URL / model size / agent
+  provider come from ``translate_settings`` (``AGENT_SERVICE_URL`` /
+  ``AGENT_MODEL_SIZE`` / ``AGENT_PROVIDER``).
+- ``CommAgentProvider`` — same facade through the ``llm.complete`` comm
+  Function instead of HTTP: in-process in a monolith where stapel-agent
+  is installed, over the Function transport (NATS) in microservices.
 - ``OpenAICompatibleProvider`` — talks to any OpenAI-compatible
   ``/chat/completions`` endpoint; base URL, API key and model come from
   ``translate_settings`` (``LLM_OPENAI_BASE_URL`` / ``LLM_OPENAI_API_KEY``
@@ -23,7 +28,6 @@ Builtin providers:
 """
 
 import logging
-import os
 
 import requests as http_requests
 from django.conf import settings
@@ -33,7 +37,23 @@ from .conf import get_language_names, translate_settings
 
 logger = logging.getLogger(__name__)
 
-AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://stapel-agent:3000/agent")
+
+def get_agent_url():
+    """Base URL of the stapel-agent service (``AGENT_SERVICE_URL``)."""
+    return str(translate_settings.AGENT_SERVICE_URL).rstrip("/")
+
+
+def agent_payload(prompt):
+    """The ``llm.complete`` request body shared by every agent call site.
+
+    ``provider`` is only sent when ``AGENT_PROVIDER`` is set — otherwise
+    the agent's own ``DEFAULT_PROVIDER`` decides.
+    """
+    payload = {"prompt": prompt, "model": str(translate_settings.AGENT_MODEL_SIZE)}
+    provider = str(translate_settings.AGENT_PROVIDER or "")
+    if provider:
+        payload["provider"] = provider
+    return payload
 
 
 class TranslationProviderError(Exception):
@@ -92,11 +112,31 @@ class BaseTranslationProvider:
         return text
 
 
+def extract_agent_result(data, target_language):
+    """``{status, result}`` envelope → cleaned text (shared HTTP/comm parsing)."""
+    if data.get("status") != "ok":
+        raise TranslationProviderError("agent service returned non-ok status")
+
+    result = data.get("result", "")
+    if isinstance(result, dict):
+        result = (
+            result.get("translation")
+            or result.get("text")
+            or result.get("content")
+            or result.get(target_language)
+            or (list(result.values())[0] if len(result) == 1 else str(result))
+        )
+    result = BaseTranslationProvider.clean_result(result)
+    if not result:
+        raise TranslationProviderError("agent service returned an empty result")
+    return result
+
+
 class AgentProvider(BaseTranslationProvider):
-    """Default provider — the stapel-agent LLM completion endpoint.
+    """Default provider — the stapel-agent LLM completion endpoint over HTTP.
 
     Preserves the exact HTTP contract the dashboard uses:
-    ``POST {AGENT_URL}/api/llm/complete`` with ``X-API-KEY`` from
+    ``POST {AGENT_SERVICE_URL}/api/llm/complete`` with ``X-API-KEY`` from
     ``settings.SERVICE_API_KEY``.
     """
 
@@ -110,12 +150,8 @@ class AgentProvider(BaseTranslationProvider):
             headers["X-API-KEY"] = api_key
         try:
             response = http_requests.post(
-                f"{AGENT_URL}/api/llm/complete",
-                json={
-                    "prompt": prompt,
-                    "model": "medium",
-                    "provider": "claude-code",
-                },
+                f"{get_agent_url()}/api/llm/complete",
+                json=agent_payload(prompt),
                 headers=headers,
                 timeout=self.timeout,
             )
@@ -124,22 +160,41 @@ class AgentProvider(BaseTranslationProvider):
         except http_requests.RequestException as exc:
             raise TranslationProviderError(f"agent service error: {exc}") from exc
 
-        if data.get("status") != "ok":
-            raise TranslationProviderError("agent service returned non-ok status")
+        return extract_agent_result(data, target_language)
 
-        result = data.get("result", "")
-        if isinstance(result, dict):
-            result = (
-                result.get("translation")
-                or result.get("text")
-                or result.get("content")
-                or result.get(target_language)
-                or (list(result.values())[0] if len(result) == 1 else str(result))
+
+class CommAgentProvider(BaseTranslationProvider):
+    """Agent facade through the ``llm.complete`` comm Function.
+
+    The natural choice in a monolith where stapel-agent is installed in
+    the same process (no HTTP hop, no SERVICE_API_KEY); in microservice
+    setups it rides the configured Function transport (NATS request-reply).
+    Select it with::
+
+        STAPEL_TRANSLATE = {
+            "LLM_PROVIDER": "stapel_translate.providers.CommAgentProvider",
+        }
+    """
+
+    timeout = 60.0
+
+    def translate(self, key, english_text, target_language, context):
+        from stapel_core.comm import call
+
+        prompt = self.build_prompt(key, english_text, target_language, context)
+        try:
+            data = call("llm.complete", agent_payload(prompt), timeout=self.timeout)
+        except TranslationProviderError:
+            raise
+        except Exception as exc:
+            raise TranslationProviderError(
+                f"llm.complete call failed: {exc}"
+            ) from exc
+        if not isinstance(data, dict):
+            raise TranslationProviderError(
+                f"llm.complete returned a non-dict result: {data!r}"
             )
-        result = self.clean_result(result)
-        if not result:
-            raise TranslationProviderError("agent service returned an empty result")
-        return result
+        return extract_agent_result(data, target_language)
 
 
 class OpenAICompatibleProvider(BaseTranslationProvider):

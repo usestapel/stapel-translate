@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import zipfile
 from io import BytesIO
 from xml.dom import minidom
@@ -58,10 +57,9 @@ from .permissions import (
     get_user_allowed_languages,
     is_privileged_user,
 )
+from .providers import agent_payload, get_agent_url
 
 logger = logging.getLogger(__name__)
-
-AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://stapel-agent:3000/agent")
 
 
 def _apply_sort_order(queryset, sort_param):
@@ -711,12 +709,8 @@ class LLMHelpView(SerializerSeamMixin, APIView):
 
         try:
             response = http_requests.post(
-                f"{AGENT_URL}/api/llm/complete",
-                json={
-                    "prompt": full_prompt,
-                    "model": "medium",
-                    "provider": "claude-code",
-                },
+                f"{get_agent_url()}/api/llm/complete",
+                json=agent_payload(full_prompt),
                 headers=headers,
                 timeout=60,
             )
@@ -856,12 +850,8 @@ class LLMHelpView(SerializerSeamMixin, APIView):
 
         try:
             response = http_requests.post(
-                f"{AGENT_URL}/api/llm/complete",
-                json={
-                    "prompt": full_prompt,
-                    "model": "medium",
-                    "provider": "claude-code",
-                },
+                f"{get_agent_url()}/api/llm/complete",
+                json=agent_payload(full_prompt),
                 headers=headers,
                 timeout=120,
             )

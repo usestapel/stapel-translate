@@ -1,5 +1,4 @@
 import logging
-import os
 import threading
 
 import requests as http_requests
@@ -20,10 +19,9 @@ from .models import (
     TranslationHistory,
     TranslationValue,
 )
+from .providers import agent_payload, get_agent_url
 
 logger = logging.getLogger(__name__)
-
-AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://stapel-agent:3000/agent")
 
 LLM_TASK_CACHE_KEY = "llm_translation_task_status"
 
@@ -114,12 +112,8 @@ Return ONLY valid JSON like: {{{json_example}}}"""
 
         try:
             response = http_requests.post(
-                f"{AGENT_URL}/api/llm/complete",
-                json={
-                    "prompt": prompt,
-                    "model": "medium",
-                    "provider": "claude-code",
-                },
+                f"{get_agent_url()}/api/llm/complete",
+                json=agent_payload(prompt),
                 headers=headers,
                 timeout=60,
             )

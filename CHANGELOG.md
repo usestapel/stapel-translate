@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Added
+- `CommAgentProvider` — the stapel-agent facade through the `llm.complete`
+  comm Function instead of HTTP: in-process in a monolith where
+  stapel-agent is installed, over the Function transport (NATS) in
+  microservices. Select via `STAPEL_TRANSLATE["LLM_PROVIDER"]`.
+- Settings keys `AGENT_SERVICE_URL`, `AGENT_MODEL_SIZE`, `AGENT_PROVIDER`,
+  `NOTIFICATIONS_URL` in the `STAPEL_TRANSLATE` namespace. The
+  `AGENT_SERVICE_URL`/`NOTIFICATIONS_URL` env vars keep working via the
+  AppSettings env fallback, but are now read lazily instead of frozen at
+  import; `AGENT_PROVIDER` replaces the previously hardcoded
+  `"claude-code"` in agent payloads (empty = the agent's
+  `DEFAULT_PROVIDER` decides).
 - comm Function `translate.resolve` (`functions.py`, registered from
   `TranslateConfig.ready()`): input `{"keys": [str], "language": str}`,
   output `{"values": {key: text}}`. Resolves `TranslationValue` rows for the

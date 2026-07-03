@@ -8,16 +8,19 @@ Safety: only sets `en` if empty (never overwrites manual edits).
 """
 
 import logging
-import os
 
 import requests as http_requests
 from django.conf import settings
 
+from .conf import translate_settings
 from .models import TranslationEntry
 
 logger = logging.getLogger(__name__)
 
-NOTIFICATIONS_URL = os.getenv("NOTIFICATIONS_URL", "http://stapel-notifications:8000")
+
+def _notifications_url():
+    """Base URL of the notifications service (``NOTIFICATIONS_URL``)."""
+    return str(translate_settings.NOTIFICATIONS_URL).rstrip("/")
 
 
 def collect_notification_keys():
@@ -34,7 +37,7 @@ def collect_notification_keys():
     api_key = getattr(settings, "SERVICE_API_KEY", None)
     headers = {"X-API-Key": api_key} if api_key else {}
 
-    url = f"{NOTIFICATIONS_URL}/notifications/api/notification-keys/"
+    url = f"{_notifications_url()}/notifications/api/notification-keys/"
     response = http_requests.get(url, headers=headers, timeout=30)
 
     if response.status_code != 200:

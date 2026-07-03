@@ -79,6 +79,17 @@ translate_settings = AppSettings(
         "LLM_OPENAI_BASE_URL": "https://api.openai.com/v1",
         "LLM_OPENAI_API_KEY": "",
         "LLM_OPENAI_MODEL": "gpt-4o-mini",
+        # stapel-agent integration (AgentProvider + dashboard LLM-help).
+        # The AGENT_SERVICE_URL env var keeps working via the AppSettings
+        # env fallback.
+        "AGENT_SERVICE_URL": "http://stapel-agent:3000/agent",
+        # Model size sent to the agent: "small" | "medium" | "large".
+        "AGENT_MODEL_SIZE": "medium",
+        # Agent-side provider name; empty = the agent's DEFAULT_PROVIDER
+        # decides (previously hardcoded "claude-code").
+        "AGENT_PROVIDER": "",
+        # notifications service base URL (notification-keys collector).
+        "NOTIFICATIONS_URL": "http://stapel-notifications:8000",
     },
 )
 
