@@ -1,7 +1,6 @@
 # Changelog
 
-## Unreleased
-
+## 0.4.0 — 2026-07-04
 ### Added
 - `CommAgentProvider` — the stapel-agent facade through the `llm.complete`
   comm Function instead of HTTP: in-process in a monolith where
