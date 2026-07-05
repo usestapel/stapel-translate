@@ -35,6 +35,6 @@ def pytest_configure(config):
             MIGRATION_MODULES={
                 "users": None,
                 "translate": None,
-                "stapel_tasks": None,
+                "stapel_taskstore": None,
             },
         )
