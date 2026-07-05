@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from stapel_core.django.api.serializers import StapelDataclassSerializer
 
@@ -42,10 +43,10 @@ class TranslationListSerializer(serializers.ModelSerializer):
         self.language = kwargs.pop('language', 'en')
         super().__init__(*args, **kwargs)
 
-    def get_value(self, obj):
+    def get_value(self, obj) -> str:
         return obj.get_value(self.language) or ''
 
-    def get_verified(self, obj):
+    def get_verified(self, obj) -> bool:
         return obj.get_verified(self.language)
 
 
@@ -64,6 +65,7 @@ class TranslationDetailSerializer(serializers.ModelSerializer):
         model = TranslationEntry
         fields = ['id', 'key', 'source', 'comment', 'translator_comment', 'refs', 'llm_translated', 'translations']
 
+    @extend_schema_field(LanguageTranslationSerializer(many=True))
     def get_translations(self, obj):
         result = []
         for lang in SUPPORTED_LANGUAGES:

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.2 — 2026-07-05
+
+### Fixed
+- OpenAPI: request-body serializers for the Figma plugin POST endpoints
+  (`translations/`, `search/`, `sync/`, `remove-ref/`, `screenshot/`) —
+  drf-spectacular no longer defaults them to a generic free-form object.
+  Added explicit request serializers in `figma_serializers.py` and mapped
+  real response/error codes (`StapelErrorSerializer` for 4xx). The
+  screenshot endpoint takes a base64 PNG string in JSON, documented as such
+  (not multipart).
+- OpenAPI: type hints on dashboard `SerializerMethodField`s —
+  `TranslationListSerializer.get_value` (`-> str`), `get_verified`
+  (`-> bool`), and `TranslationDetailSerializer.get_translations`
+  (`@extend_schema_field(LanguageTranslationSerializer(many=True))`).
+
+
 ## 0.4.1 — 2026-07-05
 
 ### Fixed

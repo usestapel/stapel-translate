@@ -19,6 +19,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.views import APIView
 from stapel_core.django.api.errors import StapelResponse
+from stapel_core.django.openapi.schemas import StapelErrorSerializer
 
 from .dto import (
     FigmaAuthResponse,
@@ -32,12 +33,17 @@ from .dto import (
 )
 from .figma_serializers import (
     FigmaAuthResponseSerializer,
+    FigmaRemoveRefRequestSerializer,
     FigmaRemoveRefResponseSerializer,
+    FigmaScreenshotUploadRequestSerializer,
     FigmaScreenshotUploadResponseSerializer,
+    FigmaSearchRequestSerializer,
     FigmaSearchResponseSerializer,
+    FigmaSyncRequestSerializer,
     FigmaSyncResponseSerializer,
     FigmaTranslationDetailResponseSerializer,
     FigmaTranslationsListResponseSerializer,
+    FigmaTranslationUpsertRequestSerializer,
     FigmaTranslationUpsertResponseSerializer,
 )
 from .conf import LANGUAGE_NAMES
@@ -220,55 +226,12 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
 
     @extend_schema(
         description="Create or update a translation entry from Figma.",
-        request={
-            "type": "object",
-            "properties": {
-                "key": {"type": "string", "description": "Translation key"},
-                "value": {
-                    "type": "string",
-                    "description": "Text value for the target language",
-                },
-                "comment": {
-                    "type": "string",
-                    "description": "Context/comment for translators",
-                },
-                "figma_url": {
-                    "type": "string",
-                    "description": "Figma selection URL to add as ref",
-                },
-                "lang": {
-                    "type": "string",
-                    "description": "Language to save to (default: en)",
-                },
-                "verify": {
-                    "type": "boolean",
-                    "description": "Set verified flag for the language",
-                },
-                "force": {
-                    "type": "boolean",
-                    "description": "Override verified guard and save anyway",
-                },
-            },
-            "required": ["key", "value"],
-        },
+        request=FigmaTranslationUpsertRequestSerializer,
         responses={
-            201: {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "integer"},
-                    "key": {"type": "string"},
-                    "value": {"type": "string"},
-                    "created": {"type": "boolean"},
-                },
-            },
-            400: {"type": "object", "properties": {"error": {"type": "string"}}},
-            409: {
-                "type": "object",
-                "properties": {
-                    "error": {"type": "string"},
-                    "existing": {"type": "object"},
-                },
-            },
+            200: FigmaTranslationUpsertResponseSerializer,
+            201: FigmaTranslationUpsertResponseSerializer,
+            400: StapelErrorSerializer,
+            401: StapelErrorSerializer,
         },
     )
     def post(self, request):
@@ -513,36 +476,11 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
 
     @extend_schema(
         description="Search for translation by exact English text match. If found, suggests linking.",
-        request={
-            "type": "object",
-            "properties": {
-                "text": {"type": "string", "description": "English text to search for"},
-                "figma_url": {
-                    "type": "string",
-                    "description": "Figma selection URL to add as ref if match found",
-                },
-            },
-            "required": ["text"],
-        },
+        request=FigmaSearchRequestSerializer,
         responses={
-            200: {
-                "type": "object",
-                "properties": {
-                    "found": {"type": "boolean"},
-                    "entry": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer"},
-                            "key": {"type": "string"},
-                            "en": {"type": "string"},
-                            "comment": {"type": "string"},
-                            "source": {"type": "string"},
-                            "refs": {"type": "array", "items": {"type": "string"}},
-                        },
-                    },
-                    "ref_added": {"type": "boolean"},
-                },
-            },
+            200: FigmaSearchResponseSerializer,
+            400: StapelErrorSerializer,
+            401: StapelErrorSerializer,
         },
     )
     def post(self, request):
@@ -721,35 +659,11 @@ class FigmaSyncView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
 
     @extend_schema(
         description="Bulk sync all Figma translatable nodes. Clears old figma refs then rebuilds.",
-        request={
-            "type": "object",
-            "properties": {
-                "entries": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "key": {"type": "string"},
-                            "currentText": {"type": "string"},
-                            "figmaUrl": {"type": "string"},
-                            "containerName": {"type": "string"},
-                            "order": {"type": "integer"},
-                        },
-                        "required": ["key"],
-                    },
-                }
-            },
-            "required": ["entries"],
-        },
+        request=FigmaSyncRequestSerializer,
         responses={
-            200: {
-                "type": "object",
-                "properties": {
-                    "synced": {"type": "integer"},
-                    "created": {"type": "integer"},
-                    "updated": {"type": "integer"},
-                },
-            }
+            200: FigmaSyncResponseSerializer,
+            400: StapelErrorSerializer,
+            401: StapelErrorSerializer,
         },
     )
     def post(self, request):
@@ -873,27 +787,12 @@ class FigmaRemoveRefView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView
 
     @extend_schema(
         description="Remove a Figma URL ref from a translation entry by key.",
-        request={
-            "type": "object",
-            "properties": {
-                "key": {"type": "string", "description": "Translation key"},
-                "figma_url": {
-                    "type": "string",
-                    "description": "Figma URL to remove from refs",
-                },
-            },
-            "required": ["key", "figma_url"],
-        },
+        request=FigmaRemoveRefRequestSerializer,
         responses={
-            200: {
-                "type": "object",
-                "properties": {
-                    "key": {"type": "string"},
-                    "ref_removed": {"type": "boolean"},
-                    "refs": {"type": "array", "items": {"type": "string"}},
-                },
-            },
-            404: {"type": "object", "properties": {"error": {"type": "string"}}},
+            200: FigmaRemoveRefResponseSerializer,
+            400: StapelErrorSerializer,
+            401: StapelErrorSerializer,
+            404: StapelErrorSerializer,
         },
     )
     def post(self, request):
@@ -966,17 +865,12 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
 
     @extend_schema(
         description="Upload a screenshot of the Figma screen where a translation key is used.",
-        request={
-            "type": "object",
-            "properties": {
-                "key": {"type": "string", "description": "Translation key"},
-                "image": {"type": "string", "description": "Base64-encoded PNG image"},
-            },
-            "required": ["key", "image"],
-        },
+        request=FigmaScreenshotUploadRequestSerializer,
         responses={
             200: FigmaScreenshotUploadResponseSerializer,
-            404: {"type": "object", "properties": {"error": {"type": "string"}}},
+            400: StapelErrorSerializer,
+            401: StapelErrorSerializer,
+            404: StapelErrorSerializer,
         },
     )
     def post(self, request):
