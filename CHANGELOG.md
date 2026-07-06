@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.6 — 2026-07-06
+
+### Changed — cross-service navigation from the registry (admin-suite AS-4)
+- The dashboard's "Services" dropdown (`templates/dashboard/base.html`) no
+  longer hardcodes 12 root-relative service links (6 Admin + 6 API). It now
+  renders from the `STAPEL_SERVICES` / `STAPEL_ADMIN["NAV_LINKS"]` registries
+  via the core `stapel_services` context processor — service list, Tools,
+  Monitoring and Dashboards sections all come from deploy config.
+- The staff login link (`templates/dashboard/login.html`) drops the hardcoded
+  `/auth/admin/login` and uses the mount-derived `stapel_admin_login_url`
+  (survives sub-path deployments).
+- `apps.py` registers the Translator Dashboard as a nav link
+  (`register_nav_link("translate.dashboard", section="dashboards", …)`) so it
+  appears in the admin/Swagger service menu without the framework hardcoding
+  it; the project can re-title/relocate/remove it via
+  `STAPEL_ADMIN["NAV_LINKS"]`.
+- `error_collector.py` reads the service list from
+  `stapel_core.django.nav.get_services()` instead of the removed
+  `stapel_core.core.config.STAPEL_SERVICES` hardcode.
+- Tests: `tests/test_nav_integration.py`; collector tests patch
+  `get_services` instead of the removed symbol.
+
 ## 0.4.5 — 2026-07-06
 
 ### Fixed

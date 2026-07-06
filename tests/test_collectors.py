@@ -2,8 +2,14 @@
 
 import pytest
 
+from stapel_core.django.nav import Service
 from stapel_translate import error_collector, notification_collector
 from stapel_translate.models import TranslationEntry
+
+
+def _services(*specs):
+    """Patch helper: STAPEL_SERVICES moved to the nav registry (AS-4)."""
+    return lambda: [Service(name=n, prefix=p) for n, p in specs]
 
 
 class FakeResponse:
@@ -25,9 +31,7 @@ class TestErrorCollector:
         )
 
         monkeypatch.setattr(
-            error_collector,
-            "STAPEL_SERVICES",
-            [{"name": "Auth", "prefix": "auth"}],
+            error_collector, "get_services", _services(("Auth", "auth"))
         )
         payload = {"err.new": "Something broke", "err.existing": "Old error", "": "skip"}
         monkeypatch.setattr(
@@ -63,9 +67,7 @@ class TestErrorCollector:
         entry.set_value("en", "Manual edit")
 
         monkeypatch.setattr(
-            error_collector,
-            "STAPEL_SERVICES",
-            [{"name": "Auth", "prefix": "auth"}],
+            error_collector, "get_services", _services(("Auth", "auth"))
         )
         monkeypatch.setattr(
             error_collector.http_requests,
@@ -84,12 +86,8 @@ class TestErrorCollector:
     def test_failure_paths_are_collected_not_raised(self, monkeypatch):
         monkeypatch.setattr(
             error_collector,
-            "STAPEL_SERVICES",
-            [
-                {"name": "Bad", "prefix": "bad"},
-                {"name": "NotDict", "prefix": "notdict"},
-                {"name": "Down", "prefix": "down"},
-            ],
+            "get_services",
+            _services(("Bad", "bad"), ("NotDict", "notdict"), ("Down", "down")),
         )
 
         def fake_get(url, headers=None, timeout=None):

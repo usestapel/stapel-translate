@@ -237,7 +237,7 @@
 
                 <div id="staff-login-hint" class="hidden" style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
                     <p style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Staff member?</p>
-                    <a href="/auth/admin/login?next={% url 'dashboard-index' %}" style="font-size: 0.875rem; color: var(--primary); text-decoration: none;">
+                    <a href="{{ stapel_admin_login_url }}?next={% url 'dashboard-index' %}" style="font-size: 0.875rem; color: var(--primary); text-decoration: none;">
                         Login via admin →
                     </a>
                 </div>

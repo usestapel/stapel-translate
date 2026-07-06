@@ -640,7 +640,9 @@
                 >Translator Dashboard</a
             >
             <div class="d-flex align-center gap-3">
-                {% if is_privileged %}
+                {# Service navigation from the STAPEL_SERVICES / NAV_LINKS #}
+                {# registries (admin-suite AS-4) — no hardcoded service list. #}
+                {% if is_privileged and stapel_services %}
                 <div class="services-dropdown">
                     <button
                         class="btn btn-secondary btn-sm services-dropdown-btn"
@@ -648,12 +650,20 @@
                         Services
                     </button>
                     <div class="services-dropdown-menu">
-                        <a href="/auth/admin/">Auth Admin</a>
-                        <a href="/cdn/admin/">CDN Admin</a>
-                        <a href="/agent/admin/">Agent Admin</a>
-                        <a href="/translate/admin/">Translate Admin</a>
-                        <a href="/profiles/admin/">Profiles Admin</a>
-                        <a href="/notifications/admin/">Notifications Admin</a>
+                        {% for service in stapel_services %}
+                        <a href="{{ service.admin_url }}">{{ service.name }} Admin</a>
+                        {% endfor %}
+                        {% for service in stapel_services %}{% if service.swagger_url %}
+                        {% if forloop.first %}<hr
+                            style="
+                                margin: 4px 0;
+                                border: none;
+                                border-top: 1px solid var(--gray-200);
+                            "
+                        />{% endif %}
+                        <a href="{{ service.swagger_url }}">{{ service.name }} API</a>
+                        {% endif %}{% endfor %}
+                        {% for section, links in stapel_nav_sections.items %}
                         <hr
                             style="
                                 margin: 4px 0;
@@ -661,12 +671,10 @@
                                 border-top: 1px solid var(--gray-200);
                             "
                         />
-                        <a href="/auth/swagger/">Auth API</a>
-                        <a href="/cdn/swagger/">CDN API</a>
-                        <a href="/agent/swagger/">Agent API</a>
-                        <a href="/translate/swagger/">Translate API</a>
-                        <a href="/profiles/swagger/">Profiles API</a>
-                        <a href="/notifications/swagger/">Notifications API</a>
+                        {% for link in links %}
+                        <a href="{{ link.url }}"{% if link.external %} target="_blank"{% endif %}>{{ link.title }}</a>
+                        {% endfor %}
+                        {% endfor %}
                     </div>
                 </div>
                 {% endif %}

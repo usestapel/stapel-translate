@@ -5,9 +5,15 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 
+from stapel_core.django.nav import Service
 from stapel_translate import error_collector, notification_collector
 from stapel_translate.collectors import get_collectors, register_collector
 from stapel_translate.models import TranslationEntry
+
+
+def _services(*specs):
+    """Patch helper: STAPEL_SERVICES moved to the nav registry (AS-4)."""
+    return lambda: [Service(name=n, prefix=p) for n, p in specs]
 
 
 class FakeResponse:
@@ -42,9 +48,7 @@ def test_registry_contains_builtin_collectors():
 class TestCollectTranslationsCommand:
     def test_runs_both_collectors_and_upserts(self, monkeypatch):
         monkeypatch.setattr(
-            error_collector,
-            "STAPEL_SERVICES",
-            [{"name": "Auth", "prefix": "auth"}],
+            error_collector, "get_services", _services(("Auth", "auth"))
         )
         # error_collector.http_requests and notification_collector.http_requests
         # are the same module — dispatch on URL in a single fake.
@@ -67,7 +71,7 @@ class TestCollectTranslationsCommand:
 
     def test_collector_exception_exits_one(self, monkeypatch):
         monkeypatch.setattr(
-            error_collector, "STAPEL_SERVICES", []
+            error_collector, "get_services", _services()
         )  # errors collector succeeds with nothing to do
 
         def boom():
@@ -85,9 +89,7 @@ class TestCollectTranslationsCommand:
 
     def test_failed_service_exits_one(self, monkeypatch):
         monkeypatch.setattr(
-            error_collector,
-            "STAPEL_SERVICES",
-            [{"name": "Down", "prefix": "down"}],
+            error_collector, "get_services", _services(("Down", "down"))
         )
 
         def fake_get(url, headers=None, timeout=None):
@@ -103,7 +105,7 @@ class TestCollectTranslationsCommand:
         assert "service Down failed" in err
 
     def test_only_option(self, monkeypatch):
-        monkeypatch.setattr(error_collector, "STAPEL_SERVICES", [])
+        monkeypatch.setattr(error_collector, "get_services", _services())
         called = []
         monkeypatch.setattr(
             notification_collector,
