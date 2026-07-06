@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- `apps.py` now registers the Translator Dashboard nav link with
+  `service_dashboard=True` — the explicit admin-suite AS-4 arbitration flag
+  (stapel-core follow-up) that tells `current_dashboard_url()` this link
+  *is* the translate service's dashboard, instead of relying on the
+  `URL_PREFIX`-matching heuristic. Requires `stapel-core`'s
+  `register_nav_link(..., service_dashboard=...)` parameter.
+- Tests: `tests/test_nav_integration.py` asserts the registered link carries
+  `service_dashboard is True`.
+
 ## 0.4.6 — 2026-07-06
 
 ### Changed — cross-service navigation from the registry (admin-suite AS-4)

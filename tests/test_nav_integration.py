@@ -26,6 +26,9 @@ class TestDashboardNavLink:
         assert link.section == "dashboards"
         assert link.url == "/translate/dashboard/"
         assert link.requires == "staff"
+        # Explicit AS-4 §2 arbitration flag — current_dashboard_url() picks
+        # this link directly rather than the URL_PREFIX-matching fallback.
+        assert link.service_dashboard is True
 
 
 class TestTemplatesHaveNoHardcodedNav:
