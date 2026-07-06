@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
+from django.db import transaction
 
 from stapel_core.comm import action_registry, subscribe_action
-from stapel_translate.models import TranslationEntry
+from stapel_translate.models import TranslationEntry, TranslationValue
 
 SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent
@@ -83,3 +84,48 @@ class TestTranslationsChangedEmission:
         entry = TranslationEntry.objects.create(key='empty.key')
         entry.set_value('en', '')
         assert captured_events == []
+
+
+def _explode(event):
+    raise RuntimeError("outbox write failed")
+
+
+@pytest.mark.django_db(transaction=True)
+class TestTranslationsChangedBestEffort:
+    """emit_translations_changed() is a best-effort fan-out (emit-check
+    EMIT002/EMIT003 gate): a failing emit must never fail the surrounding
+    TranslationValue.save(), in EITHER request mode. The outbox path
+    (OUTBOX_ENABLED=True) is the one that marks a transaction rollback-only
+    on a failing emit (stapel_core.comm.actions) — the nested
+    transaction.atomic() in emit_translations_changed() isolates that to its
+    own savepoint instead of poisoning the caller's transaction."""
+
+    def test_emit_failure_does_not_poison_atomic_request(self, monkeypatch, settings):
+        from stapel_core.comm import actions
+
+        monkeypatch.setattr(actions, "_emit_via_outbox", _explode)
+        settings.STAPEL_COMM = {"OUTBOX_ENABLED": True}
+
+        with transaction.atomic():  # simulate ATOMIC_REQUESTS wrapping
+            entry = TranslationEntry.objects.create(key="atomic.key")
+            entry.set_value("en", "Hello")  # emit fails, swallowed
+            # Would raise TransactionManagementError if the outer tx were
+            # poisoned by the swallowed emit failure:
+            assert TranslationEntry.objects.filter(pk=entry.pk).exists()
+
+        assert TranslationValue.objects.filter(
+            entry=entry, language="en", value="Hello"
+        ).exists()
+
+    def test_emit_failure_does_not_break_autocommit(self, monkeypatch, settings):
+        from stapel_core.comm import actions
+
+        monkeypatch.setattr(actions, "_emit_via_outbox", _explode)
+        settings.STAPEL_COMM = {"OUTBOX_ENABLED": True}
+
+        entry = TranslationEntry.objects.create(key="auto.key")
+        entry.set_value("en", "Hello")  # no active tx -> outermost atomic
+
+        assert TranslationValue.objects.filter(
+            entry=entry, language="en", value="Hello"
+        ).exists()

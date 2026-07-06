@@ -10,6 +10,8 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import path
 
+from stapel_core.django.admin.base import StapelModelAdmin
+
 from .conf import LANGUAGE_NAMES
 from .models import (
     SUPPORTED_LANGUAGES,
@@ -269,7 +271,20 @@ class AuthorizedTranslatorAdmin(admin.ModelAdmin):
 
 
 @admin.register(FigmaApiKey)
-class FigmaApiKeyAdmin(admin.ModelAdmin):
+class FigmaApiKeyAdmin(StapelModelAdmin):
+    """Secret carrier — admin-suite AS-5.
+
+    ``key_hash`` is pinned explicitly (it would also be pattern-auto-detected
+    via "hash"/"key", but the model never puts it in ``fields`` at all, so it
+    was already unreachable from the change form — this is belt-and-braces
+    documentation, not a fix). ``prefix`` is NOT masked: it is the 8-char
+    lookup/display fragment the model's own docstring calls out as safe to
+    show, unlike a full token. It stays out of ``readonly_fields`` too — the
+    masked-field-in-readonly_fields bypass (a raw value rendered next to the
+    masked placeholder) doesn't apply here since ``prefix`` isn't masked.
+    """
+
+    secret_fields = ("key_hash",)
     list_display = ["name", "prefix", "is_active", "created_at", "last_used_at"]
     list_filter = ["is_active"]
     search_fields = ["name", "prefix"]
@@ -288,7 +303,17 @@ class FigmaApiKeyAdmin(admin.ModelAdmin):
 
 
 @admin.register(TranslationHistory)
-class TranslationHistoryAdmin(admin.ModelAdmin):
+class TranslationHistoryAdmin(StapelModelAdmin):
+    """Append-only audit log — ops journal (admin-suite AS-5).
+
+    ``has_add/change/delete_permission`` used to be hand-rolled here (delete
+    allowed for superusers). ``@access.ops`` + ``StapelModelAdmin`` now
+    enforce the category's read-only-even-for-superuser contract uniformly
+    (mandate's A5 lets a superuser through the backend regardless of
+    category, so this admin-layer enforcement is the actual gate) — the
+    hand-rolled overrides are dropped in favor of it.
+    """
+
     list_display = [
         "created_at",
         "entry_key",
@@ -344,15 +369,6 @@ class TranslationHistoryAdmin(admin.ModelAdmin):
                 obj.new_value[:50] + "..." if len(obj.new_value) > 50 else obj.new_value
             )
         return "-"
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
 
 
 class TranslationValueInline(admin.TabularInline):

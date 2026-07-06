@@ -9,6 +9,7 @@ from django.forms.models import model_to_dict
 
 logger = logging.getLogger(__name__)
 
+from stapel_core.access import access
 from stapel_core.django.models import RevisionMixin
 
 from stapel_translate.conf import (  # noqa: F401  (re-exported for backwards compat)
@@ -199,7 +200,9 @@ class TranslationValue(models.Model):
         entry.refresh_cached_entry()
         if value_changed:
             from stapel_translate.events import emit_translations_changed
-            emit_translations_changed(self.language, [entry.key])
+            emit_translations_changed(  # emit-check: ok — this row is already saved; emit_translations_changed() opens its OWN transaction.atomic() savepoint around the actual emit() and never lets a broker/outbox failure propagate (see its docstring) — a lexical false positive, the checker can't see the callee's internal atomic block
+                self.language, [entry.key],
+            )
 
     def delete(self, *args, **kwargs):
         entry = self.entry
@@ -212,6 +215,7 @@ class TranslationValue(models.Model):
         return f"{self.entry.key} [{self.language}]"
 
 
+@access.ops  # append-only audit log — admin already forbids add/change (admin-suite AS-5)
 class TranslationHistory(models.Model):
     """History of translation changes."""
     CHANGE_TYPE_CHOICES = [
@@ -242,6 +246,7 @@ class TranslationHistory(models.Model):
         ordering = ['-created_at']
 
 
+@access.secret  # hashed Figma-plugin API key carrier (admin-suite AS-5)
 class FigmaApiKey(models.Model):
     """API key for Figma plugin authentication.
 

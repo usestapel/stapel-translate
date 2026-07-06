@@ -2,6 +2,41 @@
 
 ## [Unreleased]
 
+### Changed — admin-suite AS-5: `@access` category rollout
+- `TranslationHistory` decorated `@access.ops` (append-only audit log) and its
+  `ModelAdmin` swapped to `stapel_core.django.admin.base.StapelModelAdmin`;
+  the model's hand-rolled `has_{add,change,delete}_permission` overrides
+  (which still allowed a superuser to delete history rows) are dropped in
+  favor of the category's uniform read-only-even-for-superuser enforcement.
+- `FigmaApiKey` decorated `@access.secret` (hashed Figma-plugin API key
+  carrier — the canonical `secret` example named in `docs/admin-suite.md`)
+  and its `ModelAdmin` swapped to `StapelModelAdmin`, pinning
+  `secret_fields = ("key_hash",)`. `prefix` stays unmasked by design (the
+  model's own docstring: an 8-char lookup fragment, not the secret itself).
+- `TranslationEntry`, `TranslationValue`, and `AuthorizedTranslator` stay
+  undecorated (business, implicit `@access.standard`) — see MODULE.md for
+  the reasoning.
+- Class/attribute-only changes — confirmed via a standalone
+  `makemigrations --check` dry-run: no migrations.
+
+### Fixed — emit-check (outbox atomicity)
+- `emit_translations_changed()` (`events.py`) swallowed a failing `emit()`
+  behind a broad `except Exception: logger.exception(...)` with no local
+  atomic scope (EMIT002). It now runs the emit inside its own
+  `transaction.atomic()` savepoint before the swallow — under
+  `ATOMIC_REQUESTS=True` a failing emit marks the *surrounding* transaction
+  rollback-only (`stapel_core.comm.actions`), so without the nested atomic a
+  plain swallow would still 500 the request that changed the translation on
+  its next query; the savepoint isolates the failure instead, matching the
+  precedent already applied to `stapel-auth`/`stapel-profiles`
+  (`emit-check-retrofit`). The call site in
+  `TranslationValue.save()` (EMIT003 — the checker cannot see that the
+  callee opens its own atomic block) carries a documented
+  `# emit-check: ok` pragma. New regression tests
+  (`tests/test_events.py::TestTranslationsChangedBestEffort`) prove a
+  failing emit does not break `TranslationValue.save()` in either request
+  mode. `emit_check` is now clean on this module.
+
 ### Changed
 - `apps.py` now registers the Translator Dashboard nav link with
   `service_dashboard=True` — the explicit admin-suite AS-4 arbitration flag

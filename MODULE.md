@@ -132,6 +132,31 @@ subscribe to `translations.changed` (constant `TRANSLATIONS_CHANGED`) with
 entry/value save. `AppSettings` invalidates on Django's `setting_changed`
 (tests can use `override_settings`).
 
+### Admin categories (`stapel_core.access`, admin-suite AS-5)
+
+`TranslationHistory` is decorated `@access.ops` (append-only audit log — the
+admin already forbade add/change; `StapelModelAdmin` now also makes delete
+uniformly forbidden, including for a superuser — the mandate's A5 lets a
+superuser through the backend regardless of category, so this admin-layer
+enforcement is the actual gate; the model's own hand-rolled
+`has_{add,change,delete}_permission` overrides were dropped in favor of it).
+
+`FigmaApiKey` is decorated `@access.secret` (hashed API-key carrier for the
+Figma plugin — superuser-only, listed by name in `docs/admin-suite.md` §1.1
+as the canonical `secret` example) and its `ModelAdmin` subclasses
+`stapel_core.django.admin.base.StapelModelAdmin`, pinning
+`secret_fields = ("key_hash",)`. `prefix` (the 8-char lookup fragment) is
+deliberately NOT masked — the model's own docstring calls it safe to display,
+unlike the full key, which is never persisted at all (only its SHA-256 hash
+is stored; the plaintext is shown exactly once via `plaintext_key` right
+after generation).
+
+`TranslationEntry`, `TranslationValue`, and `AuthorizedTranslator` stay
+undecorated (business, implicit `@access.standard`): they are the content
+staff actually work with day to day (translation strings, per-language
+values, and — mirroring GDPR's `LegalHold` precedent — the roster of who is
+allowed to edit them, a real staff workflow, not a secret).
+
 ## Anti-patterns
 
 - **Hardcoding user-facing strings in other modules or app code.** Register a
