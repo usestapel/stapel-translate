@@ -485,4 +485,6 @@ class TranslationEntryAdmin(admin.ModelAdmin):
             lang = request.POST.get("language")
             if lang:
                 cache.set("admin_translation_lang", lang, timeout=None)
-        return redirect(request.headers.get("referer", "/admin/"))
+        from stapel_core.django.mounts import admin_index_url
+
+        return redirect(request.headers.get("referer", admin_index_url()))

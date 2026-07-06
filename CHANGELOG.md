@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.5 — 2026-07-06
+
+### Fixed
+- `TranslationEntryAdmin.set_translation_lang`: the no-referer fallback was a
+  hardcoded `"/admin/"` — 404s once the project is mounted under a prefix.
+  Now derives the deployment-canonical admin index via
+  `stapel_core.django.mounts.admin_index_url()` (house convention: house
+  MODULE.md → "URL mounting").
+
+
 ## 0.4.4 — 2026-07-06
 
 ### Changed
