@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/usestapel/stapel-translate/actions/workflows/ci.yml/badge.svg)](https://github.com/usestapel/stapel-translate/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/usestapel/stapel-translate/graph/badge.svg)](https://codecov.io/gh/usestapel/stapel-translate)
+[![PyPI](https://img.shields.io/pypi/v/stapel-translate.svg)](https://pypi.org/project/stapel-translate/)
 
 > AI-powered content translation — multilingual support, LLM routing (Anthropic/OpenAI)
 
