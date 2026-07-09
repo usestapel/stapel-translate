@@ -1,5 +1,15 @@
 """Drop the 20 language columns and 20 *_verified booleans from
 TranslationEntry — values now live in TranslationValue rows."""
+
+# stapel: contract-phase
+# verified: this migration (commit 451d9cc, "feat!: row-per-language
+# storage, ...") is an ANCESTOR of v0.2.0 — stapel-translate's first tagged
+# release (`git merge-base --is-ancestor 451d9cc v0.2.0` confirms it). No
+# version of stapel-translate was ever released with the wide per-language
+# columns still in place; 0018_copy_language_columns_to_values (the direct
+# dependency) copies every value into TranslationValue rows before this
+# migration removes the old columns.
+
 from django.db import migrations
 
 
