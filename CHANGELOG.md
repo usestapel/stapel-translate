@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.4.9] — 2026-07-17
+
+### Changed
+- `stapel-core` ceiling raised `>=0.10,<0.11` → `>=0.10,<0.12` (core 0.11
+  fleet re-pin: default bus, nav, config-checks, error params/language —
+  additive for modules). Suite green against core 0.11.2 (incl. the
+  `kafka` extra), no code changes needed.
+
 ## [0.4.8] — 2026-07-16
 
 ### Changed
