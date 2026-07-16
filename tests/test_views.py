@@ -50,19 +50,19 @@ class TestTranslationViewSetList:
 
     def test_list_translations_authenticated(self, api_client, regular_user, sample_translations):
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get('/translate/api/translations/')
+        response = api_client.get('/translate/api/v1/translations/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 3
 
     def test_list_translations_unauthenticated(self, api_client, sample_translations):
         """Public read access allowed."""
-        response = api_client.get('/translate/api/translations/')
+        response = api_client.get('/translate/api/v1/translations/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 3
 
     def test_list_translations_flat_language_shape(self, api_client, sample_translations):
         """Entries keep the legacy flat <lang>/<lang>_verified shape."""
-        response = api_client.get('/translate/api/translations/')
+        response = api_client.get('/translate/api/v1/translations/')
         assert response.status_code == status.HTTP_200_OK
         results = response.data['results']
         assert len(results) == 3
@@ -82,7 +82,7 @@ class TestTranslationViewSetRetrieve:
     def test_retrieve_translation(self, api_client, regular_user, sample_translations):
         api_client.force_authenticate(user=regular_user)
         entry = sample_translations[0]
-        response = api_client.get(f'/translate/api/translations/{entry.id}/')
+        response = api_client.get(f'/translate/api/v1/translations/{entry.id}/')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['key'] == entry.key
 
@@ -98,7 +98,7 @@ class TestTranslationBulkUpdate:
             {'key': 'bulk.1', 'en': 'English 1', 'ru': 'Русский 1'},
             {'key': 'bulk.2', 'en': 'English 2', 'ru': 'Русский 2'},
         ]
-        response = api_client.post('/translate/api/translations/bulk_update/', data, format='json')
+        response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['updated_ids']) == 2
         entry = TranslationEntry.objects.filter(key='bulk.1').first()
@@ -109,20 +109,20 @@ class TestTranslationBulkUpdate:
     def test_bulk_update_regular_user_forbidden(self, api_client, regular_user):
         api_client.force_authenticate(user=regular_user)
         data = [{'key': 'bulk.test', 'en': 'English'}]
-        response = api_client.post('/translate/api/translations/bulk_update/', data, format='json')
+        response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_bulk_update_invalid_data(self, api_client, superuser):
         api_client.force_authenticate(user=superuser)
         data = {'key': 'not_a_list'}  # Should be a list
-        response = api_client.post('/translate/api/translations/bulk_update/', data, format='json')
+        response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_update_updates_existing(self, api_client, superuser, sample_translations):
         api_client.force_authenticate(user=superuser)
         entry = sample_translations[0]
         data = [{'key': entry.key, 'en': 'Updated English'}]
-        response = api_client.post('/translate/api/translations/bulk_update/', data, format='json')
+        response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_200_OK
         entry.refresh_from_db()
         entry.invalidate_values_cache()
@@ -134,7 +134,7 @@ class TestLanguageDataView:
     """Tests for the per-language key-value data endpoint."""
 
     def test_language_data_dict_shape(self, api_client, sample_translations):
-        response = api_client.get('/translate/api/languages/en/data/?revision=1')
+        response = api_client.get('/translate/api/v1/languages/en/data/?revision=1')
         assert response.status_code == status.HTTP_200_OK
         assert response.data == {
             'test.key.0': 'English 0',
@@ -144,7 +144,7 @@ class TestLanguageDataView:
         assert response['Cache-Control'] == 'public, max-age=2592000'
 
     def test_language_data_other_language(self, api_client, sample_translations):
-        response = api_client.get('/translate/api/languages/ru/data/?revision=1')
+        response = api_client.get('/translate/api/v1/languages/ru/data/?revision=1')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['test.key.0'] == 'Русский 0'
 
@@ -153,24 +153,24 @@ class TestLanguageDataView:
         cache.clear()
         entry = TranslationEntry.objects.create(key='empty.value')
         entry.set_value('en', '')
-        response = api_client.get('/translate/api/languages/en/data/?revision=2')
+        response = api_client.get('/translate/api/v1/languages/en/data/?revision=2')
         assert 'empty.value' not in response.data
 
     def test_language_data_requires_revision(self, api_client, sample_translations):
-        response = api_client.get('/translate/api/languages/en/data/')
+        response = api_client.get('/translate/api/v1/languages/en/data/')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_language_data_invalid_language(self, api_client, sample_translations):
-        response = api_client.get('/translate/api/languages/xx/data/?revision=1')
+        response = api_client.get('/translate/api/v1/languages/xx/data/?revision=1')
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_language_revision_increases_on_set_value(self, api_client, sample_translations):
-        response = api_client.get('/translate/api/languages/revision/')
+        response = api_client.get('/translate/api/v1/languages/revision/')
         assert response.status_code == status.HTTP_200_OK
         before = response.data['revision']
         assert before > 0
 
         sample_translations[0].set_value('de', 'Deutsch')
 
-        response = api_client.get('/translate/api/languages/revision/')
+        response = api_client.get('/translate/api/v1/languages/revision/')
         assert response.data['revision'] == before + 1

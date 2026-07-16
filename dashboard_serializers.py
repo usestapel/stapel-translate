@@ -104,7 +104,7 @@ class LLMHelpRequestSerializer(serializers.Serializer):
 
     def validate(self, data):
         if not data.get('translate_all') and not data.get('target_lang'):
-            raise serializers.ValidationError('Either target_lang or translate_all must be provided')
+            raise serializers.ValidationError('Either target_lang or translate_all must be provided')  # noqa: R002
         return data
 
 

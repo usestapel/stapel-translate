@@ -1,7 +1,7 @@
 """
 Collect error keys from all Iron services via their error-keys endpoints.
 
-Each service exposes GET /{prefix}/api/error-keys/ which returns a dict
+Each service exposes GET /{prefix}/api/v1/error-keys/ which returns a dict
 of {localizable_error_key: english_template}.
 
 Used to gather all error translation keys.
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def collect_error_keys_from_services():
     """
-    Query GET /{prefix}/api/error-keys/ for each service and upsert
+    Query GET /{prefix}/api/v1/error-keys/ for each service and upsert
     TranslationEntry records with source='backend:errors'.
 
     Flow:
@@ -50,7 +50,7 @@ def collect_error_keys_from_services():
     for service in get_services():
         name = service.name
         prefix = service.prefix
-        url = f"http://stapel-{prefix}:8000/{prefix}/api/error-keys/"
+        url = f"http://stapel-{prefix}:8000/{prefix}/api/v1/error-keys/"
 
         try:
             response = http_requests.get(url, headers=headers, timeout=15)

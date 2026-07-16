@@ -68,7 +68,7 @@ class TestAgentProvider:
 
         assert result == "Hallo"
         call = calls[0]
-        assert call["url"] == "http://agent:3000/agent/api/llm/complete"
+        assert call["url"] == "http://agent:3000/agent/api/v1/llm/complete"
         assert call["json"]["model"] == "medium"
         # AGENT_PROVIDER unset — the agent's DEFAULT_PROVIDER decides.
         assert "provider" not in call["json"]

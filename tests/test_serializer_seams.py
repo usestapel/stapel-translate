@@ -30,14 +30,14 @@ def test_subclass_swapping_serializer_attribute_changes_serializer_used():
 
     factory = APIRequestFactory()
 
-    request = factory.get(f"/translate/api/dashboard/translations/{entry.pk}/")
+    request = factory.get(f"/translate/api/v1/dashboard/translations/{entry.pk}/")
     force_authenticate(request, user=staff)
     response = CustomDetailView.as_view()(request, pk=entry.pk)
     assert response.status_code == status.HTTP_200_OK
     assert response.data["swapped"] is True
 
     # The base view is untouched: no marker in its output
-    request = factory.get(f"/translate/api/dashboard/translations/{entry.pk}/")
+    request = factory.get(f"/translate/api/v1/dashboard/translations/{entry.pk}/")
     force_authenticate(request, user=staff)
     response = TranslationDetailView.as_view()(request, pk=entry.pk)
     assert response.status_code == status.HTTP_200_OK

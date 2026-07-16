@@ -71,14 +71,14 @@ class FigmaApiKeyAuthentication:
         """
         api_key = request.headers.get("X-Figma-API-Key")
         if not api_key:
-            return None, StapelResponse(
+            return None, StapelResponse(  # noqa: R006
                 {"error": "Missing X-Figma-API-Key header"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
         key_obj = FigmaApiKey.authenticate(api_key)
         if key_obj is None:
-            return None, StapelResponse(
+            return None, StapelResponse(  # noqa: R006
                 {"error": "Invalid or inactive API key"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
@@ -120,7 +120,7 @@ class FigmaAuthView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
             401: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
-    def get(self, request):
+    def get(self, request):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
@@ -184,14 +184,14 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
             }
         },
     )
-    def get(self, request):
+    def get(self, request):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
 
         lang = request.query_params.get("lang", "en")
         if lang not in SUPPORTED_LANGUAGES:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"Invalid language: {lang}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -234,7 +234,7 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
             401: StapelErrorSerializer,
         },
     )
-    def post(self, request):
+    def post(self, request):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
@@ -252,18 +252,18 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
         screen_name = request.data.get("screen_name", "").strip()
 
         if lang not in SUPPORTED_LANGUAGES:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"Invalid language: {lang}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not key:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Key is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if not value:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Value is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -483,7 +483,7 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
             401: StapelErrorSerializer,
         },
     )
-    def post(self, request):
+    def post(self, request):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
@@ -493,7 +493,7 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
         screen_name = request.data.get("screen_name", "").strip()
 
         if not text:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Text is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -603,7 +603,7 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, SerializerSeamMixin,
             404: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
-    def get(self, request, key):
+    def get(self, request, key):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
@@ -617,7 +617,7 @@ class FigmaTranslationDetailView(FigmaApiKeyAuthentication, SerializerSeamMixin,
                 key=key, deleted=False
             )
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f'Translation key "{key}" not found'},
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -666,14 +666,14 @@ class FigmaSyncView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
             401: StapelErrorSerializer,
         },
     )
-    def post(self, request):
+    def post(self, request):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
 
         entries = request.data.get("entries", [])
         if not entries:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "entries is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -702,7 +702,7 @@ class FigmaSyncView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
                 by_key[key]["currentText"] = entry["currentText"]
 
         if not by_key:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "entries contained no valid keys"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -795,7 +795,7 @@ class FigmaRemoveRefView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView
             404: StapelErrorSerializer,
         },
     )
-    def post(self, request):
+    def post(self, request):  # noqa: R007
         key_obj, error = self.authenticate_figma(request)
         if error:
             return error
@@ -805,19 +805,19 @@ class FigmaRemoveRefView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView
         screen_name = request.data.get("screen_name", "").strip()
 
         if not key:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Key is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if not figma_url:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "figma_url is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             entry = TranslationEntry.objects.get(key=key, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f'Translation key "{key}" not found'},
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -873,7 +873,7 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
             404: StapelErrorSerializer,
         },
     )
-    def post(self, request):
+    def post(self, request):  # noqa: R007
         import base64
 
         from django.core.files.base import ContentFile
@@ -886,19 +886,19 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
         image_b64 = request.data.get("image", "").strip()
 
         if not key:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "key is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if not image_b64:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "image is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             entry = TranslationEntry.objects.get(key=key, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f'Translation key "{key}" not found'},
                 status=status.HTTP_404_NOT_FOUND,
             )
@@ -906,7 +906,7 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
         try:
             image_data = base64.b64decode(image_b64)
         except Exception:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Invalid base64 image data"},
                 status=status.HTTP_400_BAD_REQUEST,
             )

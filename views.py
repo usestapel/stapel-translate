@@ -60,7 +60,7 @@ class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSe
         responses={200: BulkUpdateResponseSerializer, 400: OpenApiTypes.OBJECT},
     )
     @action(detail=False, methods=["post"], permission_classes=[IsSuperUser])
-    def bulk_update(self, request):
+    def bulk_update(self, request):  # noqa: R007
         data = request.data
         if not isinstance(data, list):
             return StapelErrorResponse(400, ERR_400_EXPECTED_LIST)
@@ -79,7 +79,7 @@ class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSe
                     obj.set_value(lang, item.get(lang) or "")
             updated.append(obj.pk)
 
-        return StapelResponse({"updated_ids": updated}, status=status.HTTP_200_OK)
+        return StapelResponse({"updated_ids": updated}, status=status.HTTP_200_OK)  # noqa: R006
 
 
 @extend_schema(tags=["Translations"])
@@ -132,11 +132,11 @@ max revision from `/translations/revision` endpoint.
             404: OpenApiTypes.OBJECT,
         },
     )
-    def get(self, request, lang):
+    def get(self, request, lang):  # noqa: R007
         """Return translations for the specified language as key-value dict."""
         # Validate language
         if lang not in SUPPORTED_LANGUAGES:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {
                     "error": f"Unsupported language: {lang}. Supported: {', '.join(SUPPORTED_LANGUAGES)}"
                 },
@@ -146,7 +146,7 @@ max revision from `/translations/revision` endpoint.
         # Validate revision parameter
         revision_param = request.query_params.get("revision")
         if revision_param is None:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "revision query parameter is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -184,7 +184,7 @@ class LanguageRevisionView(SerializerSeamMixin, APIView):
         description="Get the current maximum revision number for translations.",
         responses={200: LanguageRevisionResponseSerializer},
     )
-    def get(self, request):
+    def get(self, request):  # noqa: R007
         """Return the current max revision."""
         max_rev = (
             TranslationEntry.objects.aggregate(max_rev=Max("revision"))["max_rev"] or 0

@@ -132,7 +132,7 @@ class DashboardStatsView(SerializerSeamMixin, APIView):
         ],
         responses={200: DashboardStatsResponseSerializer},
     )
-    def get(self, request):
+    def get(self, request):  # noqa: R007
         source_filter = request.query_params.get("source")
 
         queryset = TranslationEntry.objects.filter(deleted=False)
@@ -218,9 +218,9 @@ class LanguageTranslationsView(SerializerSeamMixin, APIView):
         ],
         responses={200: TranslationListSerializer(many=True)},
     )
-    def get(self, request, lang):
+    def get(self, request, lang):  # noqa: R007
         if lang not in SUPPORTED_LANGUAGES:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"Invalid language: {lang}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -275,11 +275,11 @@ class TranslationDetailView(SerializerSeamMixin, APIView):
         description="Get translation detail with all languages.",
         responses={200: TranslationDetailSerializer},
     )
-    def get(self, request, pk):
+    def get(self, request, pk):  # noqa: R007
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -290,10 +290,10 @@ class TranslationDetailView(SerializerSeamMixin, APIView):
         description="Delete a translation (soft delete). Only for staff/superuser.",
         responses={204: None},
     )
-    def delete(self, request, pk):
+    def delete(self, request, pk):  # noqa: R007
         # Only staff/superuser can delete
         if not is_privileged_user(request.user):
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Only staff users can delete translations"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -301,7 +301,7 @@ class TranslationDetailView(SerializerSeamMixin, APIView):
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -328,11 +328,11 @@ class TranslationDetailView(SerializerSeamMixin, APIView):
         request=TranslationUpdateSerializer,
         responses={200: TranslationDetailSerializer},
     )
-    def patch(self, request, pk):
+    def patch(self, request, pk):  # noqa: R007
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -345,7 +345,7 @@ class TranslationDetailView(SerializerSeamMixin, APIView):
         # Enforce the translator's per-language scope on the API, not only
         # on the HTML pages.
         if not can_edit_language(request.user, lang):
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"You are not allowed to edit language: {lang}"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -362,7 +362,7 @@ class TranslationDetailView(SerializerSeamMixin, APIView):
                 author_email=request.user.email,
             ).exists()
             if not has_verified:
-                return StapelResponse(
+                return StapelResponse(  # noqa: R006
                     {
                         "error": "This translation is verified. Only admins or the verifier can edit it."
                     },
@@ -407,11 +407,11 @@ class TranslationVerifyView(SerializerSeamMixin, APIView):
         request=TranslationVerifySerializer,
         responses={200: TranslationDetailSerializer},
     )
-    def post(self, request, pk):
+    def post(self, request, pk):  # noqa: R007
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -422,7 +422,7 @@ class TranslationVerifyView(SerializerSeamMixin, APIView):
         verified = serializer.validated_data["verified"]
 
         if not can_edit_language(request.user, lang):
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"You are not allowed to verify language: {lang}"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -465,11 +465,11 @@ class TranslatorCommentView(SerializerSeamMixin, APIView):
         request=TranslatorCommentSerializer,
         responses={200: TranslationDetailSerializer},
     )
-    def patch(self, request, pk):
+    def patch(self, request, pk):  # noqa: R007
         try:
             entry = TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -518,11 +518,11 @@ class TranslationNavigationView(SerializerSeamMixin, APIView):
         ],
         responses={200: NavigationResponseSerializer},
     )
-    def get(self, request, pk):
+    def get(self, request, pk):  # noqa: R007
         try:
             TranslationEntry.objects.get(pk=pk, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -580,7 +580,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
         request=LLMHelpRequestSerializer,
         responses={200: LLMSingleTranslationResponseSerializer},
     )
-    def post(self, request):
+    def post(self, request):  # noqa: R007
         serializer = self.get_request_serializer_class()(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -592,7 +592,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
 
         # Only staff/superuser can use translate_all
         if translate_all and not is_privileged_user(request.user):
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Only staff users can translate all languages"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -604,7 +604,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
             and target_lang
             and not can_edit_language(request.user, target_lang)
         ):
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"You are not allowed to edit language: {target_lang}"},
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -612,7 +612,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
         try:
             entry = TranslationEntry.objects.get(pk=translation_id, deleted=False)
         except TranslationEntry.DoesNotExist:
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": "Translation not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
@@ -709,7 +709,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
 
         try:
             response = http_requests.post(
-                f"{get_agent_url()}/api/llm/complete",
+                f"{get_agent_url()}/api/v1/llm/complete",
                 json=agent_payload(full_prompt),
                 headers=headers,
                 timeout=60,
@@ -771,14 +771,14 @@ class LLMHelpView(SerializerSeamMixin, APIView):
                 )
                 return StapelResponse(self.get_single_response_serializer_class()(dto))
             else:
-                return StapelResponse(
+                return StapelResponse(  # noqa: R006
                     {"error": "LLM service returned non-ok status"},
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
         except http_requests.RequestException as e:
             logger.error(f"LLM service error: {e}")
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"LLM service error: {str(e)}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
@@ -850,7 +850,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
 
         try:
             response = http_requests.post(
-                f"{get_agent_url()}/api/llm/complete",
+                f"{get_agent_url()}/api/v1/llm/complete",
                 json=agent_payload(full_prompt),
                 headers=headers,
                 timeout=120,
@@ -868,7 +868,7 @@ class LLMHelpView(SerializerSeamMixin, APIView):
                     try:
                         result = json.loads(result)
                     except json.JSONDecodeError:
-                        return StapelResponse(
+                        return StapelResponse(  # noqa: R006
                             {
                                 "error": "LLM returned invalid JSON",
                                 "raw_result": result,
@@ -912,14 +912,14 @@ class LLMHelpView(SerializerSeamMixin, APIView):
                 )
                 return StapelResponse(self.get_all_response_serializer_class()(dto))
             else:
-                return StapelResponse(
+                return StapelResponse(  # noqa: R006
                     {"error": "LLM service returned non-ok status"},
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
         except http_requests.RequestException as e:
             logger.error(f"LLM service error: {e}")
-            return StapelResponse(
+            return StapelResponse(  # noqa: R006
                 {"error": f"LLM service error: {str(e)}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )

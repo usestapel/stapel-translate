@@ -52,14 +52,14 @@ class TestErrorCollector:
         created = TranslationEntry.objects.get(key="err.new")
         assert created.source == "backend:errors"
         assert created.comment == "Auth"
-        assert created.refs == ["http://stapel-auth:8000/auth/api/error-keys/"]
+        assert created.refs == ["http://stapel-auth:8000/auth/api/v1/error-keys/"]
         assert created.get_value("en") == "Something broke"
 
         existing.refresh_from_db()
         existing.invalidate_values_cache()
         assert existing.deleted is False
         assert existing.comment == "Auth"
-        assert existing.refs == ["http://stapel-auth:8000/auth/api/error-keys/"]
+        assert existing.refs == ["http://stapel-auth:8000/auth/api/v1/error-keys/"]
         assert existing.get_value("en") == "Old error"
 
     def test_does_not_overwrite_manual_english(self, monkeypatch):

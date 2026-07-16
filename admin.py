@@ -114,7 +114,7 @@ Return ONLY valid JSON like: {{{json_example}}}"""
 
         try:
             response = http_requests.post(
-                f"{get_agent_url()}/api/llm/complete",
+                f"{get_agent_url()}/api/v1/llm/complete",
                 json=agent_payload(prompt),
                 headers=headers,
                 timeout=60,

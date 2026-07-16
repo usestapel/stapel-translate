@@ -68,5 +68,5 @@ class TestErrorCollectorUsesRegistry:
 
         # URL built from the registry prefix (not a hardcoded service list).
         called_url = http_get.call_args[0][0]
-        assert "/auth/api/error-keys/" in called_url
+        assert "/auth/api/v1/error-keys/" in called_url
         assert result["services_ok"] == ["Auth"]

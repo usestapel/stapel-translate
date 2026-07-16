@@ -62,7 +62,7 @@ class TestFigmaApiKeyModel:
 class TestFigmaAuthEndpoint:
     def test_auth_valid_key(self, api_client, figma_key):
         response = api_client.get(
-            '/translate/api/figma/auth/',
+            '/translate/api/v1/figma/auth/',
             HTTP_X_FIGMA_API_KEY=figma_key.plaintext_key,
         )
         assert response.status_code == status.HTTP_200_OK
@@ -75,18 +75,18 @@ class TestFigmaAuthEndpoint:
 
     def test_auth_invalid_key(self, api_client, figma_key):
         response = api_client.get(
-            '/translate/api/figma/auth/',
+            '/translate/api/v1/figma/auth/',
             HTTP_X_FIGMA_API_KEY='fk_not-a-real-key',
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_auth_missing_header(self, api_client, figma_key):
-        response = api_client.get('/translate/api/figma/auth/')
+        response = api_client.get('/translate/api/v1/figma/auth/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_old_uuid_key_rejected(self, api_client, figma_key):
         response = api_client.get(
-            '/translate/api/figma/auth/',
+            '/translate/api/v1/figma/auth/',
             HTTP_X_FIGMA_API_KEY=str(figma_key.id),
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -96,7 +96,7 @@ class TestFigmaAuthEndpoint:
 class TestFigmaUpsertWithHashedKey:
     def test_create_translation(self, api_client, figma_key):
         response = api_client.post(
-            '/translate/api/figma/translations/',
+            '/translate/api/v1/figma/translations/',
             {'key': 'figma.hello', 'value': 'Hello'},
             format='json',
             HTTP_X_FIGMA_API_KEY=figma_key.plaintext_key,
@@ -113,7 +113,7 @@ class TestFigmaUpsertWithHashedKey:
         entry.set_value('en', 'Old')
 
         response = api_client.post(
-            '/translate/api/figma/translations/',
+            '/translate/api/v1/figma/translations/',
             {'key': 'figma.upd', 'value': 'New', 'lang': 'en', 'verify': True},
             format='json',
             HTTP_X_FIGMA_API_KEY=figma_key.plaintext_key,
@@ -133,7 +133,7 @@ class TestFigmaUpsertWithHashedKey:
         entry.set_value('de', 'Hallo', verified=True)
 
         response = api_client.get(
-            '/translate/api/figma/translations/figma.detail/?lang=de',
+            '/translate/api/v1/figma/translations/figma.detail/?lang=de',
             HTTP_X_FIGMA_API_KEY=figma_key.plaintext_key,
         )
         assert response.status_code == status.HTTP_200_OK

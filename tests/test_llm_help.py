@@ -12,7 +12,7 @@ from stapel_translate.models import (
     TranslationHistory,
 )
 
-LLM_HELP_URL = "/translate/api/dashboard/llm-help/"
+LLM_HELP_URL = "/translate/api/v1/dashboard/llm-help/"
 
 
 class FakeLLMResponse:
@@ -108,7 +108,7 @@ class TestLLMHelpSingleLanguage:
 
         # The upstream call carried the prompt and the verified context
         assert len(calls) == 1
-        assert calls[0]["url"].endswith("/api/llm/complete")
+        assert calls[0]["url"].endswith("/api/v1/llm/complete")
         assert "Keep it short" in calls[0]["json"]["prompt"]
         assert "[VERIFIED]" in calls[0]["json"]["prompt"]
 

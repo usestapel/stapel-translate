@@ -14,7 +14,7 @@ The autofill task obtains its provider through
 Builtin providers:
 
 - ``AgentProvider`` (default) — proxies to the stapel-agent service over
-  HTTP (``POST {AGENT_SERVICE_URL}/api/llm/complete``), exactly the call
+  HTTP (``POST {AGENT_SERVICE_URL}/api/v1/llm/complete``), exactly the call
   the dashboard's LLM-help button makes today. URL / model size / agent
   provider come from ``translate_settings`` (``AGENT_SERVICE_URL`` /
   ``AGENT_MODEL_SIZE`` / ``AGENT_PROVIDER``).
@@ -136,7 +136,7 @@ class AgentProvider(BaseTranslationProvider):
     """Default provider — the stapel-agent LLM completion endpoint over HTTP.
 
     Preserves the exact HTTP contract the dashboard uses:
-    ``POST {AGENT_SERVICE_URL}/api/llm/complete`` with ``X-API-KEY`` from
+    ``POST {AGENT_SERVICE_URL}/api/v1/llm/complete`` with ``X-API-KEY`` from
     ``settings.SERVICE_API_KEY``.
     """
 
@@ -150,7 +150,7 @@ class AgentProvider(BaseTranslationProvider):
             headers["X-API-KEY"] = api_key
         try:
             response = http_requests.post(
-                f"{get_agent_url()}/api/llm/complete",
+                f"{get_agent_url()}/api/v1/llm/complete",
                 json=agent_payload(prompt),
                 headers=headers,
                 timeout=self.timeout,

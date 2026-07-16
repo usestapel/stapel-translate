@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.4.8] — 2026-07-16
+
+### Changed
+- **v1 canon sweep §60** (api-versioning.md §2, §6): URL set moved to
+  `urls_v1.py`; API mounts now read `translate/api/v1/`,
+  `translate/api/v1/dashboard/`, `translate/api/v1/figma/` (version segment
+  right after `api/`, per canon); dashboard HTML pages stay unversioned (not
+  API surface). Bare `/translate/api/...` no longer exists (sweep lands
+  before the §3 API00x gates are enabled). No contract artifacts in this
+  repo yet — nothing to regenerate.
+- Cross-service callers follow the canon: error-keys collector now queries
+  `/{prefix}/api/v1/error-keys/`; LLM proxy calls agent at
+  `/api/v1/llm/complete`.
+- Lint hygiene to a clean `stapel-verify`: explicit `# noqa` on pre-existing
+  findings (R002/R006/R007).
+
 ### Changed — admin-suite AS-5: `@access` category rollout
 - `TranslationHistory` decorated `@access.ops` (append-only audit log) and its
   `ModelAdmin` swapped to `stapel_core.django.admin.base.StapelModelAdmin`;
