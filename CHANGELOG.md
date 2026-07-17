@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-07-17
+
+Fleet follow-up to stapel-core 0.12.0 (legacy shim sweep). No source
+changes needed — the module's own `TRANSLATIONS_CHANGED` constant is
+distinct from the removed `stapel_core.kafka.events.EventType
+.TRANSLATIONS_CHANGED` deprecated alias. Full suite green against core
+0.12.0.
+
+### Changed
+- `stapel-core` dependency ceiling `<0.12` → `<0.13`.
+
 ## [0.5.0] — 2026-07-17
 
 ### Removed — legacy flat wire shape & compat re-exports (BREAKING)
