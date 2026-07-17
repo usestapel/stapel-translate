@@ -22,9 +22,10 @@ from stapel_core.django.openapi.schemas import (
     OpenApiTypes,
 )
 
+from .conf import SUPPORTED_LANGUAGES
 from .dto import LanguageRevisionResponse
 from .mixins import SerializerSeamMixin
-from .models import SUPPORTED_LANGUAGES, TranslationEntry, TranslationValue
+from .models import TranslationEntry, TranslationValue
 from .serializers import LanguageRevisionResponseSerializer, TranslationEntrySerializer
 
 
@@ -55,7 +56,11 @@ class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSe
         return super().list(request, *args, **kwargs)
 
     @extend_schema(
-        description="Bulk create or update translations. Provide an array of translation objects with keys.",
+        description=(
+            "Bulk create or update translations. Provide an array of objects "
+            'with a ``key`` and a ``values`` mapping: ``{"key": "a.b", '
+            '"values": {"en": "Hello", "de": "Hallo"}}``.'
+        ),
         request=TranslationEntrySerializer(many=True),
         responses={200: BulkUpdateResponseSerializer, 400: OpenApiTypes.OBJECT},
     )
@@ -74,9 +79,11 @@ class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSe
             obj, _ = TranslationEntry.objects.update_or_create(
                 key=key, defaults={"deleted": False}
             )
-            for lang in ["en", "ru", "de", "fr", "es", "it", "pt"]:
-                if lang in item:
-                    obj.set_value(lang, item.get(lang) or "")
+            values = item.get("values") or {}
+            if isinstance(values, dict):
+                for lang, value in values.items():
+                    if lang in SUPPORTED_LANGUAGES:
+                        obj.set_value(lang, value or "")
             updated.append(obj.pk)
 
         return StapelResponse({"updated_ids": updated}, status=status.HTTP_200_OK)  # noqa: R006

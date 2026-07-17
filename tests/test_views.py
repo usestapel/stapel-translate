@@ -60,19 +60,17 @@ class TestTranslationViewSetList:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 3
 
-    def test_list_translations_flat_language_shape(self, api_client, sample_translations):
-        """Entries keep the legacy flat <lang>/<lang>_verified shape."""
+    def test_list_translations_values_shape(self, api_client, sample_translations):
+        """Entries expose stored per-language rows under ``values``."""
         response = api_client.get('/translate/api/v1/translations/')
         assert response.status_code == status.HTTP_200_OK
         results = response.data['results']
         assert len(results) == 3
         item = next(e for e in results if e['key'] == 'test.key.0')
-        assert item['en'] == 'English 0'
-        assert item['ru'] == 'Русский 0'
-        assert item['en_verified'] is False
-        # every configured language is present, even when empty
-        assert 'he' in item and item['he'] is None
-        assert 'he_verified' in item and item['he_verified'] is False
+        values = {row['language']: row for row in item['values']}
+        assert set(values) == {'en', 'ru'}
+        assert values['en'] == {'language': 'en', 'value': 'English 0', 'verified': False}
+        assert values['ru']['value'] == 'Русский 0'
 
 
 @pytest.mark.django_db
@@ -95,8 +93,8 @@ class TestTranslationBulkUpdate:
     def test_bulk_update_superuser(self, api_client, superuser):
         api_client.force_authenticate(user=superuser)
         data = [
-            {'key': 'bulk.1', 'en': 'English 1', 'ru': 'Русский 1'},
-            {'key': 'bulk.2', 'en': 'English 2', 'ru': 'Русский 2'},
+            {'key': 'bulk.1', 'values': {'en': 'English 1', 'ru': 'Русский 1'}},
+            {'key': 'bulk.2', 'values': {'en': 'English 2', 'ru': 'Русский 2'}},
         ]
         response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_200_OK
@@ -108,7 +106,7 @@ class TestTranslationBulkUpdate:
 
     def test_bulk_update_regular_user_forbidden(self, api_client, regular_user):
         api_client.force_authenticate(user=regular_user)
-        data = [{'key': 'bulk.test', 'en': 'English'}]
+        data = [{'key': 'bulk.test', 'values': {'en': 'English'}}]
         response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -121,7 +119,7 @@ class TestTranslationBulkUpdate:
     def test_bulk_update_updates_existing(self, api_client, superuser, sample_translations):
         api_client.force_authenticate(user=superuser)
         entry = sample_translations[0]
-        data = [{'key': entry.key, 'en': 'Updated English'}]
+        data = [{'key': entry.key, 'values': {'en': 'Updated English'}}]
         response = api_client.post('/translate/api/v1/translations/bulk_update/', data, format='json')
         assert response.status_code == status.HTTP_200_OK
         entry.refresh_from_db()

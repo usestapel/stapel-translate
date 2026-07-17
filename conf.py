@@ -8,10 +8,8 @@ Languages are configurable via the STAPEL_TRANSLATE settings namespace:
         "LANGUAGE_NAMES": {"en": "English", "fr": "French", "de": "German"},
     }
 
-``SUPPORTED_LANGUAGES`` and ``LANGUAGE_NAMES`` remain importable module-level
-names (re-exported from ``stapel_translate.models`` and the view modules for
-backwards compatibility) but are now thin lazy wrappers that read the
-configuration at access time.
+``SUPPORTED_LANGUAGES`` and ``LANGUAGE_NAMES`` are importable module-level
+names, but are thin lazy wrappers that read the configuration at access time.
 """
 from __future__ import annotations
 

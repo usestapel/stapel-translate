@@ -12,9 +12,8 @@ from django.urls import path
 
 from stapel_core.django.admin.base import StapelModelAdmin
 
-from .conf import LANGUAGE_NAMES
+from .conf import LANGUAGE_NAMES, SUPPORTED_LANGUAGES
 from .models import (
-    SUPPORTED_LANGUAGES,
     AuthorizedTranslator,
     FigmaApiKey,
     TranslationEntry,

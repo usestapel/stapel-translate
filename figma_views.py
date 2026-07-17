@@ -46,10 +46,9 @@ from .figma_serializers import (
     FigmaTranslationUpsertRequestSerializer,
     FigmaTranslationUpsertResponseSerializer,
 )
-from .conf import LANGUAGE_NAMES
+from .conf import LANGUAGE_NAMES, SUPPORTED_LANGUAGES
 from .mixins import SerializerSeamMixin
 from .models import (
-    SUPPORTED_LANGUAGES,
     FigmaApiKey,
     TranslationEntry,
     TranslationHistory,

@@ -1,29 +1,30 @@
 from rest_framework import serializers
 from stapel_core.django.api.serializers import StapelDataclassSerializer
 
-from .conf import SUPPORTED_LANGUAGES
 from .dto import LanguageRevisionResponse
-from .models import TranslationEntry
+from .models import TranslationEntry, TranslationValue
+
+
+class TranslationValueSerializer(serializers.ModelSerializer):
+    """A single stored per-language value row."""
+
+    class Meta:
+        model = TranslationValue
+        fields = ['language', 'value', 'verified']
 
 
 class TranslationEntrySerializer(serializers.ModelSerializer):
-    """Entry serializer that keeps the legacy flat shape.
+    """Entry serializer with row-based per-language values.
 
-    Values now live in TranslationValue rows, but the API response still
-    exposes one ``<lang>`` and one ``<lang>_verified`` key per configured
-    language, exactly as when they were columns.
+    Stored values are exposed as a ``values`` list of
+    ``{language, value, verified}`` rows.
     """
+
+    values = TranslationValueSerializer(many=True, read_only=True)
 
     class Meta:
         model = TranslationEntry
         fields = '__all__'
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        for lang in SUPPORTED_LANGUAGES:
-            data[lang] = instance.get_value(lang)
-            data[f'{lang}_verified'] = instance.get_verified(lang)
-        return data
 
 
 class LanguageRevisionResponseSerializer(StapelDataclassSerializer):

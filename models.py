@@ -5,19 +5,13 @@ import uuid
 
 from django.core.cache import cache
 from django.db import models, transaction
-from django.forms.models import model_to_dict
 
 logger = logging.getLogger(__name__)
 
 from stapel_core.access import access
 from stapel_core.django.models import RevisionMixin
 
-from stapel_translate.conf import (  # noqa: F401  (re-exported for backwards compat)
-    LANGUAGE_NAMES,
-    SUPPORTED_LANGUAGES,
-    get_default_language,
-    translate_settings,
-)
+from stapel_translate.conf import get_default_language
 from stapel_translate.utils import get_cache_key
 
 
@@ -145,15 +139,6 @@ class TranslationEntry(RevisionMixin, models.Model):
             or self.get_value(get_default_language())
             or self.key
         )
-
-    def as_dict(self):
-        d = model_to_dict(self)
-        d.pop('id', None)
-        d.pop('key', None)
-        for lang in SUPPORTED_LANGUAGES:
-            d[lang] = self.get_value(lang)
-            d[f'{lang}_verified'] = self.get_verified(lang)
-        return d
 
     def __str__(self):
         return f"{self.key} [{self.get_value('en') or self.get_value('ru') or 'no EN/RU'}]"

@@ -41,10 +41,9 @@ from .dto import (
     LLMSingleTranslationResponse,
     NavigationResponse,
 )
-from .conf import LANGUAGE_NAMES
+from .conf import LANGUAGE_NAMES, SUPPORTED_LANGUAGES
 from .mixins import SerializerSeamMixin
 from .models import (
-    SUPPORTED_LANGUAGES,
     AuthorizedTranslator,
     TranslationEntry,
     TranslationHistory,

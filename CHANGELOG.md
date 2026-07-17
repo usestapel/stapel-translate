@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-07-17
+
+### Removed — legacy flat wire shape & compat re-exports (BREAKING)
+
+- `/translate/api/v1/translations/` responses no longer inline one `<lang>` /
+  `<lang>_verified` key per configured language (the pre-0.2.0 column-era
+  shape). Stored per-language values are now exposed as a `values` list of
+  `{language, value, verified}` rows (`TranslationValueSerializer`).
+- `bulk_update` no longer reads flat `<lang>` keys from each item (and drops
+  the hardcoded 7-language list): send `{"key": ..., "values": {lang: text}}`;
+  languages are validated against the configured set.
+- `TranslationEntry.as_dict()` deleted (flat-shape dump; unused outside its
+  own test).
+- Backwards-compat re-exports of `SUPPORTED_LANGUAGES` / `LANGUAGE_NAMES` /
+  `get_default_language` / `translate_settings` from
+  `stapel_translate.models` deleted — import them from
+  `stapel_translate.conf` (canonical since 0.2.0). Internal importers
+  (`views`, `admin`, `dashboard_views`, `figma_views`) now import from
+  `conf` directly.
+- Tests of the removed surface deleted/rewritten (flat list shape, `as_dict`,
+  module re-exports).
+- Kept: the dashboard Django-fixture export/import flat inlining — it is the
+  live round-trip format of that feature, not a dead compat path. The
+  per-language `{key: text}` repo fixtures (`dump_translations` /
+  `load_builtin_translations`) are unaffected.
+
 ## [0.4.9] — 2026-07-17
 
 ### Changed

@@ -62,32 +62,21 @@ class TestLanguageNames:
             assert LANGUAGE_NAMES['tlh'] == 'Klingon'
 
 
-class TestModuleReexports:
-    def test_models_reexports(self):
-        from stapel_translate import models
-
-        assert list(models.SUPPORTED_LANGUAGES) == DEFAULT_LANGUAGES
-
-    def test_dashboard_views_reexports(self):
-        from stapel_translate import dashboard_views
-
-        assert dashboard_views.LANGUAGE_NAMES['en'] == 'English'
-
+class TestSettingsObject:
     def test_settings_object(self):
         assert translate_settings.DEFAULT_LANGUAGE == 'en'
 
 
 @pytest.mark.django_db
-class TestConfigurableLanguagesEndToEnd:
-    def test_serializer_respects_configured_languages(self):
+class TestSerializerValuesShape:
+    def test_serializer_exposes_stored_value_rows(self):
         from stapel_translate.models import TranslationEntry
         from stapel_translate.serializers import TranslationEntrySerializer
 
         entry = TranslationEntry.objects.create(key='conf.test')
         entry.set_value('en', 'Hello')
 
-        with override_settings(STAPEL_TRANSLATE={"LANGUAGES": ["en", "fr"]}):
-            data = TranslationEntrySerializer(entry).data
-            assert data['en'] == 'Hello'
-            assert 'fr' in data
-            assert 'de' not in data
+        data = TranslationEntrySerializer(entry).data
+        assert data['values'] == [
+            {'language': 'en', 'value': 'Hello', 'verified': False},
+        ]

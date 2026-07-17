@@ -103,20 +103,6 @@ class TestTranslationEntryModel:
         assert 'test.str' in result
         assert 'English' in result
 
-    def test_translation_as_dict(self):
-        """Test as_dict() method keeps the legacy flat shape."""
-        entry = make_entry('test.dict', en='English', ru='Русский', de='Deutsch')
-
-        result = entry.as_dict()
-
-        assert 'id' not in result
-        assert 'key' not in result
-        assert result['en'] == 'English'
-        assert result['ru'] == 'Русский'
-        assert result['de'] == 'Deutsch'
-        assert result['en_verified'] is False
-        assert result['he'] is None
-
     def test_translation_verified_flag(self):
         """Test per-language verified flags."""
         entry = make_entry('test.verified')
