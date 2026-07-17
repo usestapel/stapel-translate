@@ -24,7 +24,7 @@ class TestDashboardNavLink:
         assert "translate.dashboard" in links
         link = links["translate.dashboard"]
         assert link.section == "dashboards"
-        assert link.url == "/translate/dashboard/"
+        assert link.url == "/translate/admin/dashboard/"
         assert link.requires == "staff"
         # Explicit AS-4 §2 arbitration flag — current_dashboard_url() picks
         # this link directly rather than the URL_PREFIX-matching fallback.

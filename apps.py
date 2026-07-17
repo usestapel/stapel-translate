@@ -25,7 +25,7 @@ class TranslateConfig(AppConfig):
             "translate.dashboard",
             section="dashboards",
             title="Translator Dashboard",
-            url="/translate/dashboard/",
+            url="/translate/admin/dashboard/",
             requires="staff",
             service_dashboard=True,
         )

@@ -591,7 +591,7 @@ async function deleteTranslation() {
 
         if (response.ok) {
             // Redirect to language list
-            window.location.href = `/translate/dashboard/languages/${currentLang}/`;
+            window.location.href = `/translate/admin/dashboard/languages/${currentLang}/`;
         } else {
             const data = await safeFetchJson(response);
             alert(data.error || 'Failed to delete translation');
@@ -626,7 +626,7 @@ async function changeSourceFilter(source) {
             if (data.length > 0) {
                 // Navigate to first translation in filtered list
                 const firstId = data[0].id;
-                let newUrl = `/translate/dashboard/translations/${firstId}/?lang=${lang}`;
+                let newUrl = `/translate/admin/dashboard/translations/${firstId}/?lang=${lang}`;
                 if (source) newUrl += `&source=${encodeURIComponent(source)}`;
                 if (verifiedParam) newUrl += `&verified=${verifiedParam}`;
                 if (sortParam && sortParam !== 'default') newUrl += `&sort=${encodeURIComponent(sortParam)}`;
@@ -639,7 +639,7 @@ async function changeSourceFilter(source) {
     }
 
     // Fallback: go to language list page
-    let fallbackUrl = `/translate/dashboard/languages/${lang}/?`;
+    let fallbackUrl = `/translate/admin/dashboard/languages/${lang}/?`;
     if (source) fallbackUrl += `source=${encodeURIComponent(source)}`;
     window.location.href = fallbackUrl;
 }

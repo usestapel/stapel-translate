@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-07-17
+
+### Changed — dashboard moved under the `admin/` canon (BREAKING, alpha — no redirect)
+
+Fleet follow-up to stapel-core 0.12.2's new E004 §37 surface-topology check:
+a Stapel module may only mount inside `/<mod>/api/`, `/<mod>/swagger/`,
+`/<mod>/schema.json`, `/<mod>/admin/` — a bare `translate/dashboard/`
+sub-path (no canonical segment anywhere) is frontend territory, the same
+class of finding as the `/calendar` nginx incident E004 exists to catch
+mechanically.
+
+- The server-rendered, staff-gated translator dashboard moved from
+  `translate/dashboard/` to `translate/admin/dashboard/` (`urls_v1.py`). It
+  is a staff-only admin surface (`AuthorizedTranslatorMixin`/`StaffOnlyMixin`
+  gating unchanged), so it now lives under the `admin/` canon instead of a
+  bare module sub-path.
+- No redirect from the old path — pre-1.0 alpha, no compatibility shims.
+  Reverse lookups by URL name (`dashboard-index`, etc.) are unaffected;
+  hardcoded `/translate/dashboard/...` references (nav-link registration,
+  a post-save redirect, dashboard JS) were updated to the new path.
+- `stapel-core` dependency floor `>=0.10` → `>=0.12.2` (the version that
+  carries the E004 check this fix responds to; ceiling unchanged `<0.13`).
+- Added an integration test (`tests/test_surface_containment.py`) that
+  runs `stapel_core`'s real E004 check — and `manage.py check` itself —
+  against this repo's actual installed URLconf, proving the fleet is clean
+  rather than trusting self-report.
+
 ## [0.5.1] — 2026-07-17
 
 Fleet follow-up to stapel-core 0.12.0 (legacy shim sweep). No source

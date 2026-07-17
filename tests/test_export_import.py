@@ -46,7 +46,7 @@ class TestDashboardExport:
         entry = TranslationEntry.objects.create(key="exp.key", source="app:x")
         entry.set_value("en", "Hello")
 
-        request = _post(factory, staff_user, "/translate/dashboard/export/", {"format": "json"})
+        request = _post(factory, staff_user, "/translate/admin/dashboard/export/", {"format": "json"})
         response = DashboardExportView.as_view()(request)
 
         assert response.status_code == 200
@@ -62,7 +62,7 @@ class TestDashboardExport:
         entry = TranslationEntry.objects.create(key="exp.xml key!")
         entry.set_value("en", "It's \"quoted\"\nnew line")
 
-        request = _post(factory, staff_user, "/translate/dashboard/export/", {"format": "xml"})
+        request = _post(factory, staff_user, "/translate/admin/dashboard/export/", {"format": "xml"})
         response = DashboardExportView.as_view()(request)
 
         zf = zipfile.ZipFile(BytesIO(response.content))
@@ -77,7 +77,7 @@ class TestDashboardExport:
         entry.set_value("en", "Hello", verified=True)
 
         request = _post(
-            factory, staff_user, "/translate/dashboard/export/", {"format": "fixture"}
+            factory, staff_user, "/translate/admin/dashboard/export/", {"format": "fixture"}
         )
         response = DashboardExportView.as_view()(request)
 
@@ -91,7 +91,7 @@ class TestDashboardExport:
 @pytest.mark.django_db
 class TestDashboardImport:
     def test_import_without_file_reports_error(self, factory, staff_user, mock_messages):
-        request = _post(factory, staff_user, "/translate/dashboard/import/")
+        request = _post(factory, staff_user, "/translate/admin/dashboard/import/")
         response = DashboardImportView.as_view()(request)
 
         assert response.status_code == 302
@@ -100,7 +100,7 @@ class TestDashboardImport:
 
     def test_import_malformed_json_reports_error(self, factory, staff_user, mock_messages):
         upload = SimpleUploadedFile("fixture.json", b"{not json")
-        request = factory.post("/translate/dashboard/import/", {"fixture_file": upload})
+        request = factory.post("/translate/admin/dashboard/import/", {"fixture_file": upload})
         request.user = staff_user
         response = DashboardImportView.as_view()(request)
 
@@ -110,7 +110,7 @@ class TestDashboardImport:
 
     def test_import_empty_file_reports_error(self, factory, staff_user, mock_messages):
         upload = SimpleUploadedFile("fixture.json", b"")
-        request = factory.post("/translate/dashboard/import/", {"fixture_file": upload})
+        request = factory.post("/translate/admin/dashboard/import/", {"fixture_file": upload})
         request.user = staff_user
         response = DashboardImportView.as_view()(request)
 
@@ -139,7 +139,7 @@ class TestDashboardImport:
         upload = SimpleUploadedFile(
             "fixture.json", json.dumps(payload).encode("utf-8")
         )
-        request = factory.post("/translate/dashboard/import/", {"fixture_file": upload})
+        request = factory.post("/translate/admin/dashboard/import/", {"fixture_file": upload})
         request.user = staff_user
         response = DashboardImportView.as_view()(request)
 

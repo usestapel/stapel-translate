@@ -1343,7 +1343,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
 
         # Redirect: auto-advance to next entry or stay on current
         target_pk = advance_pk or pk
-        redirect_url = f"/translate/dashboard/translations/{target_pk}/?lang={lang}"
+        redirect_url = f"/translate/admin/dashboard/translations/{target_pk}/?lang={lang}"
         if source_filter:
             redirect_url += f"&source={source_filter}"
         if verified_filter:

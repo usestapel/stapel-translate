@@ -79,9 +79,15 @@ figma_urlpatterns = [
 
 # v1 canon (api-versioning.md §2, §6): the version segment sits right after
 # ``api/``. The dashboard HTML pages are not API surface and stay unversioned.
+#
+# §37 surface topology (stapel_core.django.checks E004): a module may only
+# mount inside /<mod>/api/, /<mod>/swagger/, /<mod>/schema.json, /<mod>/admin/
+# — a bare "translate/dashboard/" sub-path has none of those segments and is
+# frontend territory. The dashboard is a staff-only server-rendered surface,
+# so it lives under the admin/ canon instead.
 urlpatterns = [
     path('translate/api/v1/', include(api_urlpatterns)),
     path('translate/api/v1/dashboard/', include(dashboard_api_urlpatterns)),
     path('translate/api/v1/figma/', include(figma_urlpatterns)),
-    path('translate/dashboard/', include(dashboard_urlpatterns)),
+    path('translate/admin/dashboard/', include(dashboard_urlpatterns)),
 ]
