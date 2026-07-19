@@ -1,0 +1,70 @@
+{
+  "module": "stapel-translate",
+  "version": "0.5.2",
+  "provides": "AI-powered content translation: a TranslationEntry/TranslationValue store across a configurable language set, an LLM-routed translate.resolve comm Function with English-fallback, autofill/verification workflows, a staff dashboard (stats, per-language editing, LLM help, export/import, orphan cleanup), a Figma plugin API, and pluggable key collectors (backend error keys, notification templates, project-specific) so keys enter without any module importing another.",
+  "axes": [
+    {
+      "key": "LLM_PROVIDER",
+      "kind": "enum",
+      "default": "stapel_translate.providers.AgentProvider",
+      "group": "translate.llm",
+      "gates": {
+        "operations": [],
+        "co_gates": []
+      },
+      "curated": {
+        "summary": "Which backend performs a single-string translation for translate/verify/autofill. Default routes to stapel-agent by HTTP; CommAgentProvider routes through the llm.complete comm Function instead (in-process in a monolith); OpenAICompatibleProvider talks to any OpenAI-compatible endpoint directly (conf.py, MODULE.md Settings table).",
+        "business_label": "LLM backend for translation"
+      }
+    },
+    {
+      "key": "DEFAULT_LANGUAGE",
+      "kind": "enum",
+      "default": "en",
+      "group": "translate.languages",
+      "gates": {
+        "operations": [],
+        "co_gates": []
+      },
+      "curated": {
+        "summary": "Source/fallback language for translate.resolve and autofill (conf.py, MODULE.md Settings table).",
+        "business_label": "Source/fallback language"
+      }
+    }
+  ],
+  "extension_points": [
+    {
+      "name": "LLM_PROVIDER",
+      "kind": "dotted_path",
+      "summary": "Resolved via import_string in get_llm_provider(); contract: translate(key, english_text, target_language, context) -> str; subclass providers.BaseTranslationProvider to reuse prompt building (conf.py, MODULE.md 'Settings')."
+    },
+    {
+      "name": "collectors",
+      "kind": "named_registry",
+      "summary": "register_collector('name', callable_or_dotted_path) (collectors.py): a zero-arg callable returning a stats dict, run by collect_translations and the dashboard 'Collect keys' button — the project-specific-keys channel (MODULE.md 'Adding / overriding translations')."
+    },
+    {
+      "name": "serializer_seams",
+      "kind": "class_override",
+      "summary": "mixins.SerializerSeamMixin: views declare request_serializer_class/response_serializer_class (or purpose-prefixed variants) instantiated only through matching get_*_serializer_class() getters (MODULE.md 'Serializer seams')."
+    },
+    {
+      "name": "translate.resolve",
+      "kind": "comm_function",
+      "summary": "Provided Function: {keys, language} -> {values}, DEFAULT_LANGUAGE fallback, missing keys omitted (never null), soft-deleted entries never resolved (functions.py, MODULE.md 'Functions')."
+    }
+  ],
+  "operations_total": 22,
+  "requires": [
+    {
+      "module": "stapel-core",
+      "optional": false,
+      "reason": "comm bus (translate.resolve Function, translations.changed emit, task_handler), RevisionMixin, access categories, error registry (pyproject.toml dependency)"
+    },
+    {
+      "module": "stapel-agent",
+      "optional": true,
+      "reason": "default LLM_PROVIDER (AgentProvider) calls stapel-agent over HTTP (AGENT_SERVICE_URL) or via the llm.complete comm Function (CommAgentProvider); no direct Python import either way (conf.py AGENT_SERVICE_URL, MODULE.md Settings table)"
+    }
+  ]
+}
