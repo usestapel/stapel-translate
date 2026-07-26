@@ -2,6 +2,43 @@
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-07-26
+
+### Changed — requires stapel-core >= 0.15.5
+
+Both collectors import `stapel_core.django.peers`
+(`get_with_path_discovery` / `PathResolver` / `PeerRouteUnavailable`), which
+lands in stapel-core 0.15.5. The floor moves `0.12.2 → 0.15.5`; the `<1.0`
+ceiling is unchanged.
+
+### Fixed — key collectors asked for paths nobody served
+
+Both collectors hardcoded a peer's URL and read the resulting 404 as an
+answer — the same two-bug pattern as the stapel-workspaces membership
+incident (stapel-core 0.12.x, `django/workspaces.py`).
+
+- `notification_collector.py` polled `/notifications/api/notification-keys/`
+  while stapel-notifications mounts `NotificationKeysView` in `urls_v1.py`,
+  i.e. at `/notifications/api/v1/notification-keys/` (the §60 v1-canon
+  sweep). Every run got a routing 404 and raised a bare
+  `Notification keys API returned 404` that read like a peer problem;
+  notification templates have not been collected since the sweep.
+- `error_collector.py` polled `/{prefix}/api/v1/error-keys/`, which **no**
+  library mounted: `ErrorKeysView` was subclassed in profiles, workspaces,
+  agent, auth, billing and cdn, and mounted in none of them. Those libraries
+  now mount it in their `urls_v1.py` (see their changelogs); it stays out of
+  the OpenAPI contract (`schema = None`) and off the flow gate, like every
+  other infrastructure endpoint.
+
+The fix is not a fresh literal: endpoint paths are configuration
+(`NOTIFICATION_KEYS_PATHS`, `ERROR_KEYS_PATHS`, `SERVICE_URL_TEMPLATE`),
+discovered newest-mount-first via the new
+`stapel_core.django.peers.get_with_path_discovery`, and a 404 that came from
+Django's URL resolver rather than from the view (Content-Type: HTML vs JSON)
+raises `PeerRouteUnavailable` / is reported as
+`no error-keys endpoint` in `services_failed` instead of being swallowed as
+"this service has no keys".
+
 ## [0.5.2] — 2026-07-17
 
 ### Changed — dashboard moved under the `admin/` canon (BREAKING, alpha — no redirect)

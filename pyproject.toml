@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stapel-translate"
-version = "0.5.3"
+version = "0.5.4"
 description = "AI-powered content translation Django app for the Stapel framework"
 readme = "README.md"
 license = { text = "MIT" }
@@ -24,7 +24,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "stapel-core>=0.12.2,<1.0",
+    # >=0.15.5: stapel_core.django.peers (get_with_path_discovery / PathResolver /
+    # PeerRouteUnavailable) — both key collectors import it unconditionally.
+    "stapel-core>=0.15.5,<1.0",
 ]
 
 [project.urls]

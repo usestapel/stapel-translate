@@ -1,10 +1,18 @@
 """
-Collect error keys from all Iron services via their error-keys endpoints.
+Collect error keys from all Stapel services via their error-keys endpoints.
 
-Each service exposes GET /{prefix}/api/v1/error-keys/ which returns a dict
-of {localizable_error_key: english_template}.
+A service that subclasses ``stapel_core.django.api.errors.ErrorKeysView`` and
+mounts it exposes ``GET /{prefix}/api/v1/error-keys/``, returning a dict of
+``{localizable_error_key: english_template}``.
 
-Used to gather all error translation keys.
+Neither the peer's host nor the endpoint's path is hardcoded here: both come
+from ``STAPEL_TRANSLATE`` (``SERVICE_URL_TEMPLATE``, ``ERROR_KEYS_PATHS`` —
+newest mount point first) and the path is discovered per service by
+:func:`stapel_core.django.peers.get_with_path_discovery`. Not every service
+mounts the endpoint (only the ones that declare error keys do), so a service
+whose URL resolver rejects every candidate is reported explicitly as
+"no error-keys endpoint" in ``services_failed`` rather than silently
+contributing zero keys.
 """
 
 import logging
@@ -12,16 +20,34 @@ import logging
 import requests as http_requests
 from django.conf import settings
 from stapel_core.django.nav import get_services
+from stapel_core.django.peers import PeerRouteUnavailable, get_with_path_discovery
 
+from .conf import translate_settings
 from .models import TranslationEntry
 
 logger = logging.getLogger(__name__)
 
 
+def _service_base_url(prefix: str) -> str:
+    """Base URL of the sibling service serving ``prefix`` (deploy config)."""
+    return str(translate_settings.SERVICE_URL_TEMPLATE).format(prefix=prefix)
+
+
+def _error_keys_paths(prefix: str) -> list:
+    """Configured mount points of a service's error-keys endpoint, newest first."""
+    paths = [str(p).format(prefix=prefix) for p in translate_settings.ERROR_KEYS_PATHS]
+    if not paths:
+        raise Exception(
+            "STAPEL_TRANSLATE['ERROR_KEYS_PATHS'] is empty — the error-keys "
+            "collector has no endpoint to call"
+        )
+    return paths
+
+
 def collect_error_keys_from_services():
     """
-    Query GET /{prefix}/api/v1/error-keys/ for each service and upsert
-    TranslationEntry records with source='backend:errors'.
+    Query each service's error-keys endpoint and upsert TranslationEntry
+    records with source='backend:errors'.
 
     Flow:
     1. Clear refs and comment for source='backend:errors' before collecting
@@ -50,10 +76,14 @@ def collect_error_keys_from_services():
     for service in get_services():
         name = service.name
         prefix = service.prefix
-        url = f"http://stapel-{prefix}:8000/{prefix}/api/v1/error-keys/"
 
         try:
-            response = http_requests.get(url, headers=headers, timeout=15)
+            response, url = get_with_path_discovery(
+                _service_base_url(prefix),
+                _error_keys_paths(prefix),
+                headers=headers,
+                timeout=15,
+            )
             if response.status_code != 200:
                 logger.warning(f"Error keys from {name}: HTTP {response.status_code}")
                 services_failed.append(
@@ -130,6 +160,14 @@ def collect_error_keys_from_services():
 
             services_ok.append(name)
 
+        except PeerRouteUnavailable as e:
+            # No candidate path reached a view: this service does not mount
+            # ErrorKeysView (many don't), or it moved. Either way it is a
+            # routing fact worth naming — not "this service has no errors".
+            logger.warning("No error-keys endpoint on %s: %s", name, e)
+            services_failed.append(
+                {"name": name, "error": f"no error-keys endpoint ({e})"}
+            )
         except http_requests.RequestException as e:
             logger.warning(f"Error keys from {name}: {e}")
             services_failed.append({"name": name, "error": str(e)})

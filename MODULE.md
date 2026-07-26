@@ -51,6 +51,9 @@ name → environment variable → default.
 | `AGENT_MODEL_SIZE` | `"medium"` | Model size sent to the agent (`small`/`medium`/`large`) |
 | `AGENT_PROVIDER` | `""` | Agent-side provider name; empty lets the agent's `DEFAULT_PROVIDER` decide (previously hardcoded `"claude-code"`) |
 | `NOTIFICATIONS_URL` | `"http://stapel-notifications:8000"` | notifications service base URL for the notification-keys collector (previously a raw `os.getenv`) |
+| `NOTIFICATION_KEYS_PATHS` | `["/notifications/api/v1/notification-keys/", "/notifications/api/notification-keys/"]` | Candidate mount points of the notification-keys endpoint, **newest first**. The collector tries them in order and keeps the one that reaches the view; a 404 from Django's URL resolver (HTML, not JSON) is a path skew, never "no keys" |
+| `SERVICE_URL_TEMPLATE` | `"http://stapel-{prefix}:8000"` | Base URL of a sibling service by URL prefix — deploy config for the error-keys fan-out |
+| `ERROR_KEYS_PATHS` | `["/{prefix}/api/v1/error-keys/", "/{prefix}/api/error-keys/"]` | Candidate mount points of a service's error-keys endpoint, newest first (same discovery rule) |
 
 ### Functions — `translate.resolve` (`functions.py`)
 
@@ -77,8 +80,8 @@ channels, not imports:
 
 | Channel | Mechanism | `source` value |
 |---|---|---|
-| Error keys of any Stapel service | Service exposes `GET /{prefix}/api/error-keys/` (subclass `stapel_core.django.api.errors.ErrorKeysView`, override `get_service_errors()`); `error_collector.py` polls all services | `backend:errors` |
-| Notification templates | notifications service exposes `GET /notifications/api/notification-keys/` (`{key: english_default}`); `notification_collector.py` polls it | `backend:notifications` |
+| Error keys of any Stapel service | Service exposes `GET /{prefix}/api/v1/error-keys/` (subclass `stapel_core.django.api.errors.ErrorKeysView`, override `get_service_errors()`, **mount it in `urls_v1.py`**); `error_collector.py` polls all services, trying `ERROR_KEYS_PATHS` in order | `backend:errors` |
+| Notification templates | notifications service exposes `GET /notifications/api/v1/notification-keys/` (`{key: english_default}`); `notification_collector.py` polls it, trying `NOTIFICATION_KEYS_PATHS` in order | `backend:notifications` |
 | Project-specific keys | `register_collector("name", callable_or_dotted_path)` (`collectors.py`) — a collector is a zero-arg callable returning a stats dict; run by `collect_translations` and the dashboard "Collect keys" button | your choice |
 | Curated fixtures | `fixtures/builtin/{lang}.json` + `load_builtin_translations` — idempotent upsert, `verified=True`, **user edits always win** (`--force` overwrites only `source="stapel:builtin"` entries) | `stapel:builtin` |
 | Manual / bulk | Dashboard editing, export/import, entries API | — |

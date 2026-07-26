@@ -88,6 +88,26 @@ translate_settings = AppSettings(
         "AGENT_PROVIDER": "",
         # notifications service base URL (notification-keys collector).
         "NOTIFICATIONS_URL": "http://stapel-notifications:8000",
+        # Where the notification-keys endpoint is mounted on that service,
+        # newest mount point FIRST. The collector tries them in order and
+        # keeps the one that actually reaches the view (see
+        # stapel_core.django.peers): a hardcoded literal here is precisely
+        # the bug that made this collector fail silently after the v1-canon
+        # sweep moved the endpoint under `api/v1/`.
+        "NOTIFICATION_KEYS_PATHS": [
+            "/notifications/api/v1/notification-keys/",  # notifications >= v1 canon
+            "/notifications/api/notification-keys/",     # pre-v1 legacy
+        ],
+        # Base URL template of a sibling service, by URL prefix — deploy
+        # config, not a constant (the error-keys collector fans out over
+        # STAPEL_SERVICES with it).
+        "SERVICE_URL_TEMPLATE": "http://stapel-{prefix}:8000",
+        # Where a service mounts its error-keys endpoint, newest first;
+        # `{prefix}` is the service's URL prefix.
+        "ERROR_KEYS_PATHS": [
+            "/{prefix}/api/v1/error-keys/",  # v1 canon
+            "/{prefix}/api/error-keys/",     # pre-v1 legacy
+        ],
     },
 )
 
