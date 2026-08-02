@@ -6,6 +6,7 @@
 [![downloads](https://static.pepy.tech/badge/stapel-translate/month)](https://pepy.tech/project/stapel-translate)
 [![python](https://img.shields.io/pypi/pyversions/stapel-translate?logo=python&logoColor=white)](https://pypi.org/project/stapel-translate/)
 [![license](https://img.shields.io/github/license/usestapel/stapel-translate)](https://github.com/usestapel/stapel-translate/blob/main/LICENSE)
+[![llms.txt](https://img.shields.io/badge/llms.txt-blue)](https://github.com/usestapel/stapel-translate/blob/main/docs/llms.txt)
 
 > AI-powered content translation — multilingual support, LLM routing (Anthropic/OpenAI)
 
