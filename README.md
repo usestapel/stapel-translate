@@ -1,8 +1,11 @@
 # stapel-translate
 
-[![CI](https://github.com/usestapel/stapel-translate/actions/workflows/ci.yml/badge.svg)](https://github.com/usestapel/stapel-translate/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/usestapel/stapel-translate/graph/badge.svg)](https://codecov.io/gh/usestapel/stapel-translate)
-[![PyPI](https://img.shields.io/pypi/v/stapel-translate.svg)](https://pypi.org/project/stapel-translate/)
+[![CI](https://img.shields.io/github/actions/workflow/status/usestapel/stapel-translate/ci.yml?branch=main&logo=github&label=CI)](https://github.com/usestapel/stapel-translate/actions/workflows/ci.yml?query=branch%3Amain)
+[![coverage](https://img.shields.io/codecov/c/github/usestapel/stapel-translate?branch=main&logo=codecov&label=coverage)](https://app.codecov.io/gh/usestapel/stapel-translate)
+[![pypi](https://img.shields.io/pypi/v/stapel-translate?logo=pypi&logoColor=white&label=pypi)](https://pypi.org/project/stapel-translate/)
+[![downloads](https://static.pepy.tech/badge/stapel-translate/month)](https://pepy.tech/project/stapel-translate)
+[![python](https://img.shields.io/pypi/pyversions/stapel-translate?logo=python&logoColor=white)](https://pypi.org/project/stapel-translate/)
+[![license](https://img.shields.io/github/license/usestapel/stapel-translate)](https://github.com/usestapel/stapel-translate/blob/main/LICENSE)
 
 > AI-powered content translation — multilingual support, LLM routing (Anthropic/OpenAI)
 
