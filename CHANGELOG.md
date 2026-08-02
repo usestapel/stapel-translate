@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.5.5] — 2026-08-02
+
+Packaging/docs catch-up, no behavior change:
+
+- Badge canon + CI fix-up.
+- `docs/llms.txt` — the fifth contract artifact (badge-canon §3),
+  rendered from the curated (hand-authored) `docs/capabilities.json` by
+  `stapel_tools.llms_txt`; `capabilities.json`'s `version` field brought
+  in sync with `pyproject.toml` (0.5.2 → 0.5.5), no other change to its
+  hand-authored content.
+
 ## [0.5.4] — 2026-07-26
 
 ### Changed — requires stapel-core >= 0.15.5

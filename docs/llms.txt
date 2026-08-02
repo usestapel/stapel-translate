@@ -1,4 +1,4 @@
-# stapel-translate 0.5.2
+# stapel-translate 0.5.5
 
 AI-powered content translation: a TranslationEntry/TranslationValue store across a configurable language set, an LLM-routed translate.resolve comm Function with English-fallback, autofill/verification workflows, a staff dashboard (stats, per-language editing, LLM help, export/import, orphan cleanup), a Figma plugin API, and pluggable key collectors (backend error keys, notification templates, project-specific) so keys enter without any module importing another.
 
