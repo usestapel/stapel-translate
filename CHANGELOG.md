@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.5.6] — 2026-08-02
+
+Fix-up: 0.5.5's `publish.yml` test gate never installed `stapel-tools`,
+unlike `ci.yml` — the new `docs/llms.txt` drift/determinism tests in
+`tests/test_contract.py` failed at the tag-triggered publish workflow
+(0.5.5 never reached PyPI). `publish.yml` now installs `stapel-tools`
+the same way `ci.yml` does. No other change.
+
 ## [0.5.5] — 2026-08-02
 
 Packaging/docs catch-up, no behavior change:
