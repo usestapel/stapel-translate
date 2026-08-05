@@ -54,6 +54,131 @@
       "summary": "Provided Function: {keys, language} -> {values}, DEFAULT_LANGUAGE fallback, missing keys omitted (never null), soft-deleted entries never resolved (functions.py, MODULE.md 'Functions')."
     }
   ],
+  "surface": [
+    {
+      "name": "autofill_missing",
+      "kind": "gate_function",
+      "path": "stapel_translate.autofill.autofill_missing",
+      "intent": "Fill missing (key, language) translation values via the configured LLM provider, writing verified=False and a TranslationHistory row per fill. This is the core logic behind the translate.autofill comm task and the autofill_translations command — call it directly instead of looping get_llm_provider().translate() yourself when triggering autofill from custom code (e.g. right after a new language is added)."
+    },
+    {
+      "name": "autofill_targets",
+      "kind": "gate_function",
+      "path": "stapel_translate.autofill.autofill_targets",
+      "intent": "The configured languages eligible for autofill (every supported language except the source/default one, optionally narrowed to a caller-given subset). Use this instead of filtering get_supported_languages() yourself so a custom autofill trigger agrees with the built-in task/command on which languages are ever auto-translated."
+    },
+    {
+      "name": "get_collectors",
+      "kind": "factory",
+      "path": "stapel_translate.collectors.get_collectors",
+      "intent": "{name: callable} for every registered collector, dotted-path entries resolved on access. Call this instead of reaching into the module's internal registry dict directly when building a custom key-collection command or UI."
+    },
+    {
+      "name": "register_collector",
+      "kind": "factory",
+      "path": "stapel_translate.collectors.register_collector",
+      "intent": "Register a translation-key collector (a zero-arg callable returning a stats dict) under a name — the fork-free way to make collect_translations and the dashboard's 'Collect keys' button pick up a project-specific key source, alongside the built-in errors/notifications collectors."
+    },
+    {
+      "name": "get_default_language",
+      "kind": "gate_function",
+      "path": "stapel_translate.conf.get_default_language",
+      "intent": "The source/fallback language code (DEFAULT_LANGUAGE) — call this instead of hardcoding 'en' or reading translate_settings.DEFAULT_LANGUAGE directly; translate.resolve, autofill and the dashboard all derive their fallback from this single call."
+    },
+    {
+      "name": "get_language_names",
+      "kind": "gate_function",
+      "path": "stapel_translate.conf.get_language_names",
+      "intent": "{code: display name} for every configured language, with DEFAULT_LANGUAGE_NAMES filling in any configured code that has no override. Use this instead of reading translate_settings.LANGUAGE_NAMES directly when rendering a language picker, so an unnamed configured language still gets a sensible label instead of a KeyError or a blank."
+    },
+    {
+      "name": "get_supported_languages",
+      "kind": "gate_function",
+      "path": "stapel_translate.conf.get_supported_languages",
+      "intent": "The configured language codes. Call this instead of reading translate_settings.LANGUAGES (or django.conf.settings.LANGUAGES) directly: it detects and discards Django's own untouched global LANGUAGES default — which AppSettings' flat-setting fallback would otherwise pick up as if it were a deliberate override — and unwraps Django-style (code, name) tuples.",
+      "instead_of": [
+        "django.conf.global_settings.LANGUAGES"
+      ]
+    },
+    {
+      "name": "collect_error_keys_from_services",
+      "kind": "gate_function",
+      "path": "stapel_translate.error_collector.collect_error_keys_from_services",
+      "intent": "Fan out to every registered service's error-keys endpoint (with per-service mount-point discovery) and upsert TranslationEntry rows tagged source='backend:errors', clearing stale refs first. This is what the 'errors' collector and the dashboard's key-collection button run — call it directly instead of writing your own peer-discovery loop over stapel_core.django.nav.get_services()."
+    },
+    {
+      "name": "collect_notification_keys",
+      "kind": "gate_function",
+      "path": "stapel_translate.notification_collector.collect_notification_keys",
+      "intent": "Fetch the notifications service's notification-keys endpoint (with mount-point discovery, cached per process) and upsert TranslationEntry rows tagged source='backend:notifications'. This is what the 'notifications' collector runs — call it directly instead of hand-rolling the same peer-discovery + upsert logic; NOTIFICATION_KEYS_PATHS already carries the pre-/post-v1-canon mount-point history so a resolver-404 fails loudly (PeerRouteUnavailable) rather than silently reporting zero keys."
+    },
+    {
+      "name": "IsAuthorizedTranslator",
+      "kind": "permission_class",
+      "path": "stapel_translate.permissions.IsAuthorizedTranslator",
+      "intent": "DRF permission gate for the translator/dashboard API surface: passes for staff/superusers or any email listed in AuthorizedTranslator with is_active=True. Put this on any endpoint that exposes translation content for editing instead of hand-rolling an is_staff check or a custom AuthorizedTranslator query — it is exactly the check the built-in dashboard and Figma-plugin views already share.",
+      "instead_of": [
+        "rest_framework.permissions.IsAdminUser"
+      ]
+    },
+    {
+      "name": "can_edit_language",
+      "kind": "predicate",
+      "path": "stapel_translate.permissions.can_edit_language",
+      "intent": "Whether a user may edit/verify a given language — the one call the dashboard/Figma views make before accepting a translation write. Reach for this instead of re-deriving it from get_user_allowed_languages() in a new endpoint; a per-view reimplementation is exactly how a translator-scoping gap would slip past one endpoint and not the others."
+    },
+    {
+      "name": "get_translator_info",
+      "kind": "gate_function",
+      "path": "stapel_translate.permissions.get_translator_info",
+      "intent": "Look up the AuthorizedTranslator record for a user by email (None if unauthenticated or not registered). Call this instead of AuthorizedTranslator.objects.get(email=...) directly — it already absorbs the anonymous-user and DoesNotExist cases a naive lookup would need to special-case.",
+      "instead_of": [
+        "AuthorizedTranslator.objects.get()"
+      ]
+    },
+    {
+      "name": "get_translator_name",
+      "kind": "gate_function",
+      "path": "stapel_translate.permissions.get_translator_name",
+      "intent": "Display name for translation-history logging: the AuthorizedTranslator's name, else the user's full name/email, else empty. Use this instead of user.get_full_name() directly so history entries stay attributable even for a translator record with no linked platform account."
+    },
+    {
+      "name": "get_user_allowed_languages",
+      "kind": "gate_function",
+      "path": "stapel_translate.permissions.get_user_allowed_languages",
+      "intent": "The language whitelist a user may edit/verify — None means unrestricted (a privileged user, or a translator whose allowed_languages is empty). Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the 'empty list = all languages' convention."
+    },
+    {
+      "name": "is_privileged_user",
+      "kind": "predicate",
+      "path": "stapel_translate.permissions.is_privileged_user",
+      "intent": "Whether a user is staff or superuser — the shortcut every other check here (get_user_allowed_languages, etc.) short-circuits on before consulting AuthorizedTranslator. Reach for this instead of writing user.is_superuser or user.is_staff inline so the privilege definition stays in one place."
+    },
+    {
+      "name": "agent_payload",
+      "kind": "gate_function",
+      "path": "stapel_translate.providers.agent_payload",
+      "intent": "The llm.complete request body shared by AgentProvider and CommAgentProvider (model size + optional provider override). Reuse this when writing a third stapel-agent-backed provider instead of re-reading AGENT_MODEL_SIZE/AGENT_PROVIDER by hand."
+    },
+    {
+      "name": "extract_agent_result",
+      "kind": "gate_function",
+      "path": "stapel_translate.providers.extract_agent_result",
+      "intent": "Parse the {status, result} envelope stapel-agent returns (HTTP or comm alike) into cleaned text, raising TranslationProviderError on a non-ok status or an empty/malformed result. Explicitly the shared HTTP/comm parsing step (per its own docstring) — reuse it in any custom provider that talks to stapel-agent through a different transport instead of re-deriving the envelope shape."
+    },
+    {
+      "name": "get_agent_url",
+      "kind": "gate_function",
+      "path": "stapel_translate.providers.get_agent_url",
+      "intent": "Base URL of the stapel-agent service (AGENT_SERVICE_URL, trailing slash stripped). Use this instead of reading translate_settings.AGENT_SERVICE_URL directly when writing a custom LLM_PROVIDER that still talks to stapel-agent, so the normalization stays in one place."
+    },
+    {
+      "name": "get_llm_provider",
+      "kind": "factory",
+      "path": "stapel_translate.providers.get_llm_provider",
+      "intent": "Instantiate the configured LLM_PROVIDER. Call this instead of importing a specific provider class directly whenever custom code (a management command, a one-off script) needs to run a translation exactly the way autofill/LLM-help do."
+    }
+  ],
   "operations_total": 22,
   "requires": [
     {
