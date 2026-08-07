@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Защитить мою учётную запись",
   "notification.new_device_login.warning": "Если это были вы, ничего делать не нужно. Если вы не узнаёте этот вход, немедленно защитите свою учётную запись.",
   "notification.suspicious_login.subject": "Обнаружен подозрительный вход",
+  "notification.suspicious_login.badge": "Оповещение безопасности",
   "notification.suspicious_login.heading": "Обнаружен подозрительный вход",
   "notification.suspicious_login.body": "В вашу учётную запись выполнен вход из нераспознанного местоположения.\n\nУстройство: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Это не я — завершить все сеансы",

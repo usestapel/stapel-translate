@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Заштити мој налог",
   "notification.new_device_login.warning": "Ако сте то били ви, није потребна никаква радња. Ако не препознајете ову пријаву, одмах заштитите свој налог.",
   "notification.suspicious_login.subject": "Откривена је сумњива пријава",
+  "notification.suspicious_login.badge": "Безбедносно упозорење",
   "notification.suspicious_login.heading": "Откривена је сумњива пријава",
   "notification.suspicious_login.body": "На вашем налогу је откривена пријава са непрепознате локације.\n\nУређај: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Ово нисам ја — опозови све сесије",

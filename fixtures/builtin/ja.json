@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "アカウントを保護",
   "notification.new_device_login.warning": "ご本人による操作であれば、対応は不要です。心当たりのないサインインの場合は、直ちにアカウントを保護してください。",
   "notification.suspicious_login.subject": "不審なサインインを検出しました",
+  "notification.suspicious_login.badge": "セキュリティ警告",
   "notification.suspicious_login.heading": "不審なサインインを検出しました",
   "notification.suspicious_login.body": "見覚えのない場所からのサインインがアカウントで検出されました。\n\nデバイス：{device_name}\nIP：{ip_address}",
   "notification.suspicious_login.cta": "心当たりがない — すべてのセッションを取り消す",

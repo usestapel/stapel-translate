@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Hesabımı güvenceye al",
   "notification.new_device_login.warning": "Bu sizseniz herhangi bir işlem yapmanız gerekmez. Bu oturum açmayı tanımıyorsanız hesabınızı hemen güvenceye alın.",
   "notification.suspicious_login.subject": "Şüpheli oturum açma algılandı",
+  "notification.suspicious_login.badge": "Güvenlik uyarısı",
   "notification.suspicious_login.heading": "Şüpheli oturum açma algılandı",
   "notification.suspicious_login.body": "Hesabınızda tanınmayan bir konumdan oturum açma algılandı.\n\nCihaz: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Bu ben değildim — tüm oturumları sonlandır",

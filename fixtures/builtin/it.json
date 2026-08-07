@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Proteggi il mio account",
   "notification.new_device_login.warning": "Se sei stato tu, non è necessaria alcuna azione. Se non riconosci questo accesso, proteggi subito il tuo account.",
   "notification.suspicious_login.subject": "Rilevato accesso sospetto",
+  "notification.suspicious_login.badge": "Avviso di sicurezza",
   "notification.suspicious_login.heading": "Rilevato accesso sospetto",
   "notification.suspicious_login.body": "È stato rilevato un accesso al tuo account da una posizione sconosciuta.\n\nDispositivo: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Non sono stato io — revoca tutte le sessioni",

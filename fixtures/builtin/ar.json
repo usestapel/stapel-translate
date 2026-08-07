@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "تأمين حسابي",
   "notification.new_device_login.warning": "إذا كنت أنت من قام بذلك، فلا حاجة إلى أي إجراء. إذا لم تتعرف على تسجيل الدخول هذا، فأمّن حسابك فورًا.",
   "notification.suspicious_login.subject": "تم رصد تسجيل دخول مشبوه",
+  "notification.suspicious_login.badge": "تنبيه أمني",
   "notification.suspicious_login.heading": "تم رصد تسجيل دخول مشبوه",
   "notification.suspicious_login.body": "تم رصد تسجيل دخول إلى حسابك من موقع غير معروف.\n\nالجهاز: {device_name}\nعنوان IP: {ip_address}",
   "notification.suspicious_login.cta": "لم يكن هذا أنا — إبطال جميع الجلسات",

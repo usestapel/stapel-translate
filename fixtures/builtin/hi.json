@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "मेरा खाता सुरक्षित करें",
   "notification.new_device_login.warning": "यदि यह आप थे, तो कुछ करने की आवश्यकता नहीं है। यदि आप इस साइन-इन को नहीं पहचानते, तो तुरंत अपना खाता सुरक्षित करें।",
   "notification.suspicious_login.subject": "संदिग्ध साइन-इन का पता चला",
+  "notification.suspicious_login.badge": "सुरक्षा चेतावनी",
   "notification.suspicious_login.heading": "संदिग्ध साइन-इन का पता चला",
   "notification.suspicious_login.body": "आपके खाते में किसी अनजान स्थान से साइन-इन का पता चला।\n\nडिवाइस: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "यह मैं नहीं था — सभी सेशन रद्द करें",

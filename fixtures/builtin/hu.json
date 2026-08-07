@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Fiókom védelme",
   "notification.new_device_login.warning": "Ha Ön volt, nincs teendője. Ha nem ismeri fel ezt a bejelentkezést, azonnal védje meg fiókját.",
   "notification.suspicious_login.subject": "Gyanús bejelentkezést észleltünk",
+  "notification.suspicious_login.badge": "Biztonsági riasztás",
   "notification.suspicious_login.heading": "Gyanús bejelentkezést észleltünk",
   "notification.suspicious_login.body": "Fiókjában ismeretlen helyről történő bejelentkezést észleltünk.\n\nEszköz: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Nem én voltam — összes munkamenet visszavonása",

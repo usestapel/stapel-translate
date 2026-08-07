@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Zaštiti moj račun",
   "notification.new_device_login.warning": "Ako ste to bili vi, nije potrebna nikakva radnja. Ako ne prepoznajete ovu prijavu, odmah zaštitite svoj račun.",
   "notification.suspicious_login.subject": "Otkrivena je sumnjiva prijava",
+  "notification.suspicious_login.badge": "Sigurnosno upozorenje",
   "notification.suspicious_login.heading": "Otkrivena je sumnjiva prijava",
   "notification.suspicious_login.body": "Na vašem računu otkrivena je prijava s neprepoznate lokacije.\n\nUređaj: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Ovo nisam ja — opozovi sve sesije",

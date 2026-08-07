@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Proteger mi cuenta",
   "notification.new_device_login.warning": "Si has sido tú, no es necesario hacer nada. Si no reconoces este inicio de sesión, protege tu cuenta de inmediato.",
   "notification.suspicious_login.subject": "Inicio de sesión sospechoso detectado",
+  "notification.suspicious_login.badge": "Alerta de seguridad",
   "notification.suspicious_login.heading": "Inicio de sesión sospechoso detectado",
   "notification.suspicious_login.body": "Se ha detectado un inicio de sesión desde una ubicación desconocida en tu cuenta.\n\nDispositivo: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "No he sido yo — revocar todas las sesiones",

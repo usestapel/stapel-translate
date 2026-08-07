@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "내 계정 보호하기",
   "notification.new_device_login.warning": "본인이 로그인한 것이라면 별도의 조치가 필요 없습니다. 알 수 없는 로그인이라면 즉시 계정을 보호해 주세요.",
   "notification.suspicious_login.subject": "의심스러운 로그인 감지",
+  "notification.suspicious_login.badge": "보안 경고",
   "notification.suspicious_login.heading": "의심스러운 로그인이 감지되었습니다",
   "notification.suspicious_login.body": "알 수 없는 위치에서의 로그인이 계정에서 감지되었습니다.\n\n기기: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "내가 아니에요 — 모든 세션 취소",

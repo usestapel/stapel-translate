@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Mein Konto schützen",
   "notification.new_device_login.warning": "Wenn Sie das waren, ist nichts weiter zu tun. Wenn Sie diese Anmeldung nicht erkennen, sichern Sie Ihr Konto umgehend.",
   "notification.suspicious_login.subject": "Verdächtige Anmeldung erkannt",
+  "notification.suspicious_login.badge": "Sicherheitswarnung",
   "notification.suspicious_login.heading": "Verdächtige Anmeldung erkannt",
   "notification.suspicious_login.body": "Bei Ihrem Konto wurde eine Anmeldung von einem unbekannten Standort festgestellt.\n\nGerät: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Das war ich nicht — alle Sitzungen widerrufen",

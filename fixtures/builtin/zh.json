@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "保护我的账号",
   "notification.new_device_login.warning": "如果是您本人操作，无需任何处理。如果您不认识此次登录，请立即保护您的账号。",
   "notification.suspicious_login.subject": "检测到可疑登录",
+  "notification.suspicious_login.badge": "安全警报",
   "notification.suspicious_login.heading": "检测到可疑登录",
   "notification.suspicious_login.body": "您的账号出现了一次来自陌生位置的登录。\n\n设备：{device_name}\nIP：{ip_address}",
   "notification.suspicious_login.cta": "这不是我——撤销所有会话",

@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "אבטחת החשבון שלי",
   "notification.new_device_login.warning": "אם זה הייתם אתם, אין צורך בפעולה נוספת. אם אינכם מזהים את ההתחברות הזו, אבטחו את חשבונכם מיד.",
   "notification.suspicious_login.subject": "זוהתה התחברות חשודה",
+  "notification.suspicious_login.badge": "התראת אבטחה",
   "notification.suspicious_login.heading": "זוהתה התחברות חשודה",
   "notification.suspicious_login.body": "זוהתה התחברות לחשבונכם ממיקום לא מוכר.\n\nמכשיר: {device_name}\nכתובת IP: {ip_address}",
   "notification.suspicious_login.cta": "זה לא אני — ניתוק כל ההתחברויות",

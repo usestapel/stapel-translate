@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Sécuriser mon compte",
   "notification.new_device_login.warning": "Si c'était vous, aucune action n'est nécessaire. Si vous ne reconnaissez pas cette connexion, sécurisez immédiatement votre compte.",
   "notification.suspicious_login.subject": "Connexion suspecte détectée",
+  "notification.suspicious_login.badge": "Alerte de sécurité",
   "notification.suspicious_login.heading": "Connexion suspecte détectée",
   "notification.suspicious_login.body": "Une connexion depuis un emplacement inconnu a été détectée sur votre compte.\n\nAppareil : {device_name}\nIP : {ip_address}",
   "notification.suspicious_login.cta": "Ce n'était pas moi — révoquer toutes les sessions",

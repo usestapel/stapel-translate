@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Proteger a minha conta",
   "notification.new_device_login.warning": "Se foi você, não é necessária qualquer ação. Se não reconhece este início de sessão, proteja a sua conta imediatamente.",
   "notification.suspicious_login.subject": "Início de sessão suspeito detetado",
+  "notification.suspicious_login.badge": "Alerta de segurança",
   "notification.suspicious_login.heading": "Início de sessão suspeito detetado",
   "notification.suspicious_login.body": "Foi detetado um início de sessão a partir de uma localização desconhecida na sua conta.\n\nDispositivo: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Não fui eu — revogar todas as sessões",

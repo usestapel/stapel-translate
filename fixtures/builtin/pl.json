@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Zabezpiecz moje konto",
   "notification.new_device_login.warning": "Jeśli to Ty, nie musisz nic robić. Jeśli nie rozpoznajesz tego logowania, natychmiast zabezpiecz swoje konto.",
   "notification.suspicious_login.subject": "Wykryto podejrzane logowanie",
+  "notification.suspicious_login.badge": "Alert bezpieczeństwa",
   "notification.suspicious_login.heading": "Wykryto podejrzane logowanie",
   "notification.suspicious_login.body": "Na Twoim koncie wykryto logowanie z nieznanej lokalizacji.\n\nUrządzenie: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "To nie ja — unieważnij wszystkie sesje",

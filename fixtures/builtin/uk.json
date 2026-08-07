@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Захистити мій обліковий запис",
   "notification.new_device_login.warning": "Якщо це були ви, нічого робити не потрібно. Якщо ви не впізнаєте цей вхід, негайно захистіть свій обліковий запис.",
   "notification.suspicious_login.subject": "Виявлено підозрілий вхід",
+  "notification.suspicious_login.badge": "Сповіщення безпеки",
   "notification.suspicious_login.heading": "Виявлено підозрілий вхід",
   "notification.suspicious_login.body": "У вашому обліковому записі виявлено вхід із нерозпізнаного місця.\n\nПристрій: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Це не я — завершити всі сеанси",

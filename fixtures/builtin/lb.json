@@ -241,6 +241,7 @@
   "notification.new_device_login.cta": "Mäi Kont schützen",
   "notification.new_device_login.warning": "Wann Dir dat wart, braucht Dir näischt ze maachen. Wann Dir dës Umeldung net kennt, séchert Äre Kont direkt of.",
   "notification.suspicious_login.subject": "Verdächteg Umeldung festgestallt",
+  "notification.suspicious_login.badge": "Sécherheetswarnung",
   "notification.suspicious_login.heading": "Verdächteg Umeldung festgestallt",
   "notification.suspicious_login.body": "Op Ärem Kont gouf eng Umeldung vun engem onbekannte Standuert festgestallt.\n\nApparat: {device_name}\nIP: {ip_address}",
   "notification.suspicious_login.cta": "Dat war ech net — all Sessiounen zréckzéien",
