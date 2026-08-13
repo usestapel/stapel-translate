@@ -54,6 +54,15 @@ name → environment variable → default.
 | `NOTIFICATION_KEYS_PATHS` | `["/notifications/api/v1/notification-keys/", "/notifications/api/notification-keys/"]` | Candidate mount points of the notification-keys endpoint, **newest first**. The collector tries them in order and keeps the one that reaches the view; a 404 from Django's URL resolver (HTML, not JSON) is a path skew, never "no keys" |
 | `SERVICE_URL_TEMPLATE` | `"http://stapel-{prefix}:8000"` | Base URL of a sibling service by URL prefix — deploy config for the error-keys fan-out |
 | `ERROR_KEYS_PATHS` | `["/{prefix}/api/v1/error-keys/", "/{prefix}/api/error-keys/"]` | Candidate mount points of a service's error-keys endpoint, newest first (same discovery rule) |
+| `FIGMA_URL_ALLOWED_HOSTS` | `["figma.com"]` | Hosts a `figma_url` ref may point at (subdomains included, HTTPS only). Enforced at every Figma write endpoint by `security.validate_figma_url`; a ref outside the list is a `400`. Widen it if your design tool is fronted by your own domain |
+| `SCREENSHOT_MAX_BYTES` | `5 * 1024 * 1024` | Hard cap on an uploaded screenshot, checked against the *encoded* string first and the decoded bytes second |
+| `SCREENSHOT_MAX_PIXELS` | `40_000_000` | Raster cap, read from the image header before any pixel buffer is allocated. Needs the `images` extra (Pillow) |
+| `SCREENSHOT_MAX_DIMENSION` | `20_000` | Per-side cap, same header-only check |
+| `SCREENSHOT_ALLOWED_FORMATS` | `["png", "jpeg", "webp", "gif"]` | Sniffed from magic bytes, never from a declared content type |
+| `SCREENSHOT_UPLOADS_PER_HOUR` | `300` | Per-API-key upload budget (`0` disables). One global plugin key otherwise means an unbounded write channel; past the budget the endpoint answers `429` |
+| `SCREENSHOT_STORAGE` | `"default"` | `STORAGES` alias `TranslationEntry.screenshot` writes to. Point it at a private alias so uploaded screens are not served off a public bucket; repointing does not move existing files |
+| `DASHBOARD_CSP` | see `conf.py` | Content-Security-Policy for the server-rendered dashboard, as `{directive: value}`. `{nonce}` in a value is replaced with the per-response nonce. `{}` sends no header. The shipped templates carry no inline `on*=` handlers, so the default needs no `unsafe-inline` for scripts — **an overridden template with inline handlers will break under it** |
+| `DASHBOARD_CSP_REPORT_ONLY` | `False` | Send the policy as `Content-Security-Policy-Report-Only` instead — for observing violations before enforcing |
 
 ### Functions — `translate.resolve` (`functions.py`)
 

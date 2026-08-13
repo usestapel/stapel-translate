@@ -2,7 +2,7 @@
 
 AI-powered content translation: a TranslationEntry/TranslationValue store across a configurable language set, an LLM-routed translate.resolve comm Function with English-fallback, autofill/verification workflows, a staff dashboard (stats, per-language editing, LLM help, export/import, orphan cleanup), a Figma plugin API, and pluggable key collectors (backend error keys, notification templates, project-specific) so keys enter without any module importing another.
 
-Contract: axes 2 · surface 19 · extension points 4.
+Contract: axes 2 · surface 24 · extension points 4.
 Generated from docs/capabilities.json by `stapel-llms-txt` — do not edit; drift-gated by `make contract-check`.
 
 ## Configuration axes — what a product switches on
@@ -29,8 +29,13 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
   Fan out to every registered service's error-keys endpoint (with per-service mount-point discovery) and upsert TranslationEntry rows tagged source='backend:errors', clearing stale refs first. This is what the 'errors' collector and the dashboard's key-collection button run — call it directly instead of writing your own peer-discovery loop over stapel_core.django.nav.get_services().
 - collect_notification_keys — stapel_translate.notification_collector.collect_notification_keys
   Fetch the notifications service's notification-keys endpoint (with mount-point discovery, cached per process) and upsert TranslationEntry rows tagged source='backend:notifications'. This is what the 'notifications' collector runs — call it directly instead of hand-rolling the same peer-discovery + upsert logic; NOTIFICATION_KEYS_PATHS already carries the pre-/post-v1-canon mount-point history so a resolver-404 fails loudly (PeerRouteUnavailable) rather than silently reporting zero keys.
+- decode_screenshot — stapel_translate.security.decode_screenshot
+  instead of: base64.b64decode
+  Turn a base64 screenshot into bounded, sniffed, decoder-verified bytes, or raise ScreenshotRejected. Every bound runs before the next step does any work — encoded length, decoded length, magic bytes, then header dimensions — so call this instead of base64.b64decode() in any endpoint that accepts an uploaded image; the naive decode is what let arbitrary bytes be written to disk as a .png.
 - extract_agent_result — stapel_translate.providers.extract_agent_result
   Parse the {status, result} envelope stapel-agent returns (HTTP or comm alike) into cleaned text, raising TranslationProviderError on a non-ok status or an empty/malformed result. Explicitly the shared HTTP/comm parsing step (per its own docstring) — reuse it in any custom provider that talks to stapel-agent through a different transport instead of re-deriving the envelope shape.
+- figma_url_allowed_hosts — stapel_translate.security.figma_url_allowed_hosts
+  The configured hosts a Figma ref may point at (FIGMA_URL_ALLOWED_HOSTS, normalised). Use it to render a helpful rejection message or a deployment check; validate_figma_url is what you call to actually decide.
 - get_agent_url — stapel_translate.providers.get_agent_url
   Base URL of the stapel-agent service (AGENT_SERVICE_URL, trailing slash stripped). Use this instead of reading translate_settings.AGENT_SERVICE_URL directly when writing a custom LLM_PROVIDER that still talks to stapel-agent, so the normalization stays in one place.
 - get_default_language — stapel_translate.conf.get_default_language
@@ -47,11 +52,18 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
   Display name for translation-history logging: the AuthorizedTranslator's name, else the user's full name/email, else empty. Use this instead of user.get_full_name() directly so history entries stay attributable even for a translator record with no linked platform account.
 - get_user_allowed_languages — stapel_translate.permissions.get_user_allowed_languages
   The language whitelist a user may edit/verify — None means unrestricted (a privileged user, or a translator whose allowed_languages is empty). Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the 'empty list = all languages' convention.
+- safe_href — stapel_translate.security.safe_href
+  instead of: django.utils.html.escape
+  The URL if is_safe_href accepts it, else an empty string — the value to actually interpolate into an href. Reach for this rather than escaping or regex-stripping a URL yourself; an empty href is inert, a half-sanitised one is not. In templates use the |safe_href filter from {% load stapel_translate %}.
+- validate_figma_url — stapel_translate.security.validate_figma_url
+  Return an HTTPS Figma-host URL unchanged, or raise UnsafeUrl. This is the write-boundary check every Figma ingestion endpoint runs before a ref reaches the database — call it in any custom endpoint that accepts a figma_url instead of trusting the plugin, so a poisoned ref is never stored for every other consumer to render.
 ### predicate
 - can_edit_language — stapel_translate.permissions.can_edit_language
   Whether a user may edit/verify a given language — the one call the dashboard/Figma views make before accepting a translation write. Reach for this instead of re-deriving it from get_user_allowed_languages() in a new endpoint; a per-view reimplementation is exactly how a translator-scoping gap would slip past one endpoint and not the others.
 - is_privileged_user — stapel_translate.permissions.is_privileged_user
   Whether a user is staff or superuser — the shortcut every other check here (get_user_allowed_languages, etc.) short-circuits on before consulting AuthorizedTranslator. Reach for this instead of writing user.is_superuser or user.is_staff inline so the privilege definition stays in one place.
+- is_safe_href — stapel_translate.security.is_safe_href
+  Whether a stored string may go into an href/src without enabling script — an allowlist of http/https/mailto plus root-relative paths, normalised the way a browser normalises a scheme. Call this (or the |safe_href template filter) on any URL that came from the database or a peer service: Django's autoescaping protects the text of a value but happily keeps a javascript: scheme inside href="{{ ... }}".
 ### factory
 - get_collectors — stapel_translate.collectors.get_collectors
   {name: callable} for every registered collector, dotted-path entries resolved on access. Call this instead of reaching into the module's internal registry dict directly when building a custom key-collection command or UI.

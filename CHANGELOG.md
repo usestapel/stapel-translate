@@ -2,6 +2,81 @@
 
 ## [Unreleased]
 
+### Security — BREAKING: the Figma plugin surface is now allowlisted and bounded
+
+Closes two P1 findings from the 2026-08-11 audit (TRANS-01, TRANS-02).
+
+**Read this before upgrading if you run the Figma plugin endpoints.** Two
+previously-accepted inputs are now rejected:
+
+- `figma_url` on `POST figma/translations/`, `figma/translations/search/`
+  and `figma/translations/sync/` must be an **HTTPS URL on an allowed Figma
+  host** — anything else is a `400`, including plain `http`, credentials in
+  the URL, a non-default port, and every non-http scheme. Widen with
+  `STAPEL_TRANSLATE["FIGMA_URL_ALLOWED_HOSTS"]` (default `["figma.com"]`;
+  subdomains of each entry are accepted). Removing an already-stored bad ref
+  via `figma/translations/remove-ref/` is deliberately *not* validated, so a
+  poisoned ref can still be deleted.
+- `image` on `POST figma/translations/screenshot/` must decode to a real
+  `png`/`jpeg`/`webp`/`gif` within `SCREENSHOT_MAX_BYTES` (default 5 MiB),
+  `SCREENSHOT_MAX_PIXELS` (40M) and `SCREENSHOT_MAX_DIMENSION` (20000px).
+  The cap is applied to the *encoded* string first, the decoded bytes next,
+  then the magic bytes, then the decoded header. Previously any base64-
+  decodable blob was written to disk as `.png`. Uploads are also metered per
+  API key at `SCREENSHOT_UPLOADS_PER_HOUR` (default 300, `0` disables) and
+  answer `429` past the budget.
+
+Also changed on that surface:
+
+- Stored screenshots get a random filename instead of one derived from the
+  translation key, which was an enumerable index of every uploaded screen.
+- `TranslationEntry.screenshot` now resolves its storage from
+  `STAPEL_TRANSLATE["SCREENSHOT_STORAGE"]` (a `STORAGES` alias, default
+  `"default"` — no behaviour change until you point it elsewhere). Migration
+  `0021` is a field-level `AlterField`: no column change, no data movement.
+  **Repointing the alias does not move already-uploaded files.** Install the
+  new `stapel-translate[images]` extra (Pillow) wherever these endpoints are
+  reachable — without a decoder the byte cap and magic-byte sniff still
+  apply, but the pixel/dimension caps cannot.
+
+### Security — the staff dashboard no longer builds DOM from strings
+
+- `templates/dashboard/translation.html` built the LLM "translate all"
+  results panel by concatenating model output into an HTML string and
+  assigning it to `innerHTML` — stored XSS in a privileged staff session
+  (TRANS-01). Every template now builds nodes through the shared
+  `stapelDom` helper (`templates/dashboard/_safe_dom.html`), and a test
+  fails the build if `innerHTML`/`outerHTML`/`insertAdjacentHTML`/
+  `document.write` reappears in any template.
+- Stored ref URLs are rendered through a new `|safe_href` filter
+  (`{% load stapel_translate %}`) and carry `rel="noopener noreferrer"`.
+  A ref whose scheme is not `http`/`https`/`mailto` renders as an inert
+  empty `href` instead of a live `javascript:` link. This covers refs that
+  are *already* in the database from before the ingestion allowlist above.
+- Dashboard pages now send a `Content-Security-Policy` with a per-response
+  nonce and no `unsafe-inline`/`unsafe-eval` for scripts. Every inline
+  `on*=` handler in the shipped templates was replaced with a delegated
+  `data-click`/`data-change`/`data-submit` action so the policy is real
+  rather than decorative. Replace the whole policy via
+  `STAPEL_TRANSLATE["DASHBOARD_CSP"]`, set it to `{}` to send no header, or
+  set `DASHBOARD_CSP_REPORT_ONLY` to observe before enforcing. Responses
+  also carry `X-Content-Type-Options` and `Referrer-Policy`.
+
+  *If you override any dashboard template in your project*, add the nonce to
+  your own `<script>` tags (`{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}`)
+  and drop inline handlers, or set `DASHBOARD_CSP_REPORT_ONLY = True` until
+  you have.
+
+### Fixed
+
+- `templates/dashboard/index.html` carried a stray `}` that made its whole
+  `<script>` block a syntax error: the source filter and both modals were
+  dead on the dashboard index page.
+- Dashboard pages had no rendering test at all (the test settings defined no
+  `TEMPLATES` engine), which is how both of the above survived a green
+  suite. `conftest.py` now configures templates, middleware and an isolated
+  `MEDIA_ROOT`.
+
 ## [0.5.6] — 2026-08-02
 
 Fix-up: 0.5.5's `publish.yml` test gate never installed `stapel-tools`,
