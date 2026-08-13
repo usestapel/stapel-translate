@@ -4,21 +4,21 @@
 <div class="object-tools">
   <ul>
     <li>
-      <button type="button" class="button" onclick="checkLlmStatus()">LLM Status</button>
+      <button type="button" class="button" data-click="checkLlmStatus">LLM Status</button>
       <span id="llm-status-text" style="margin-left: 8px; font-size: 12px;"></span>
     </li>
     <li>
-      <form method="post" action="{% url 'admin:collect_translation_keys' %}" style="display:inline-block;"
-            onsubmit="return confirm('Collect error and notification keys from all services?');">
+      <form method="post" action="{% url 'admin:collect_translation_keys' %}" style="display:inline-block;">
         {% csrf_token %}
-        <button type="submit" class="button">Collect keys</button>
+        <button type="submit" class="button" data-click="confirm"
+                data-confirm-text="Collect error and notification keys from all services?">Collect keys</button>
       </form>
     </li>
     <li>
       <form method="post" action="{% url 'admin:set_translation_lang' %}" style="display:inline-block;">
         {% csrf_token %}
         <label for="lang-selector" style="margin-right: 8px;">Language:</label>
-        <select id="lang-selector" name="language" onchange="this.form.submit()">
+        <select id="lang-selector" name="language" data-change="submitOwnForm">
           {% for code, name in languages %}
           <option value="{{ code }}" {% if code == current_language %}selected{% endif %}>{{ name }}</option>
           {% endfor %}
@@ -32,26 +32,35 @@
 
 {% block extrahead %}
 {{ block.super }}
-<script>
+{% include "dashboard/_safe_dom.html" %}
+<script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
+function llmStatusLine(color, text) {
+    const span = stapelDom.el('span', null, text);
+    span.style.color = color;
+    stapelDom.replace('llm-status-text', span);
+}
+
 function checkLlmStatus() {
     fetch('llm_status/')
         .then(response => response.json())
         .then(data => {
-            const statusEl = document.getElementById('llm-status-text');
             if (data.status === 'running') {
-                statusEl.innerHTML = `<span style="color: orange;">⏳ Running: ${data.completed}/${data.total} (${data.translated} ok, ${data.errors} errors)</span>`;
+                llmStatusLine('orange', `⏳ Running: ${data.completed}/${data.total} (${data.translated} ok, ${data.errors} errors)`);
                 // Auto-refresh while running
                 setTimeout(checkLlmStatus, 3000);
             } else if (data.status === 'completed') {
-                statusEl.innerHTML = `<span style="color: green;">✓ Done: ${data.translated} translated, ${data.errors} errors</span>`;
+                llmStatusLine('green', `✓ Done: ${data.translated} translated, ${data.errors} errors`);
             } else {
-                statusEl.innerHTML = `<span style="color: gray;">Idle</span>`;
+                llmStatusLine('gray', 'Idle');
             }
         })
         .catch(err => {
-            document.getElementById('llm-status-text').innerHTML = `<span style="color: red;">Error: ${err}</span>`;
+            llmStatusLine('red', `Error: ${err}`);
         });
 }
+
+stapelDom.register({checkLlmStatus: checkLlmStatus});
+
 // Check status on page load
 document.addEventListener('DOMContentLoaded', checkLlmStatus);
 </script>

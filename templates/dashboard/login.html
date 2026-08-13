@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load stapel_translate %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -180,7 +180,7 @@
                     <p class="login-subtitle">Sorry, you don't have permission to access the Translator Dashboard. Please contact an administrator if you believe this is a mistake.</p>
                 </div>
 
-                <button type="button" class="btn btn-primary" onclick="logoutAndSwitch()">
+                <button type="button" class="btn btn-primary" data-click="logoutAndSwitch">
                     Login with a Different Account
                 </button>
             </div>
@@ -194,7 +194,7 @@
 
                 <div id="error-email" class="error-message hidden"></div>
 
-                <form id="form-email" onsubmit="requestOtp(event)">
+                <form id="form-email" data-submit="requestOtp">
                     <div class="form-group">
                         <label class="form-label" for="email">Email Address</label>
                         <input type="email" name="email" id="email" class="form-input"
@@ -219,7 +219,7 @@
 
                 <div id="error-otp" class="error-message hidden"></div>
 
-                <form id="form-otp" onsubmit="verifyOtp(event)">
+                <form id="form-otp" data-submit="verifyOtp">
                     <div class="form-group">
                         <label class="form-label" for="code">Verification Code</label>
                         <input type="text" name="code" id="code" class="form-input code-input"
@@ -230,14 +230,14 @@
                     <button type="submit" class="btn btn-primary" id="btn-otp">
                         Verify & Login
                     </button>
-                    <button type="button" class="btn btn-secondary" onclick="backToEmail()">
+                    <button type="button" class="btn btn-secondary" data-click="backToEmail">
                         Use Different Email
                     </button>
                 </form>
 
                 <div id="staff-login-hint" class="hidden" style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
                     <p style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Staff member?</p>
-                    <a href="{{ stapel_admin_login_url }}?next={% url 'dashboard-index' %}" style="font-size: 0.875rem; color: var(--primary); text-decoration: none;">
+                    <a href="{{ stapel_admin_login_url|safe_href }}?next={% url 'dashboard-index' %}" style="font-size: 0.875rem; color: var(--primary); text-decoration: none;">
                         Login via admin →
                     </a>
                 </div>
@@ -246,7 +246,9 @@
         </div>
     </div>
 
-    <script>
+    {% include "dashboard/_safe_dom.html" %}
+
+    <script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
     async function logoutAndSwitch() {
         try {
             await fetch('/auth/api/logout/', {
@@ -270,7 +272,7 @@
 
         errorDiv.classList.add('hidden');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span>Sending...';
+        stapelDom.replace(btn, [stapelDom.el('span', 'spinner'), document.createTextNode('Sending...')]);
 
         try {
             const response = await fetch('/auth/api/email/request/', {
@@ -297,7 +299,7 @@
             errorDiv.classList.remove('hidden');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = 'Send Verification Code';
+            stapelDom.setText(btn, 'Send Verification Code');
         }
     }
 
@@ -310,7 +312,7 @@
 
         errorDiv.classList.add('hidden');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span>Verifying...';
+        stapelDom.replace(btn, [stapelDom.el('span', 'spinner'), document.createTextNode('Verifying...')]);
 
         try {
             const response = await fetch('/auth/api/email/verify/', {
@@ -338,7 +340,7 @@
             errorDiv.classList.remove('hidden');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = 'Verify & Login';
+            stapelDom.setText(btn, 'Verify & Login');
         }
     }
 
@@ -350,6 +352,13 @@
         document.getElementById('code').value = '';
         document.getElementById('email').focus();
     }
+
+    stapelDom.register({
+        logoutAndSwitch: logoutAndSwitch,
+        requestOtp: (node, event) => requestOtp(event),
+        verifyOtp: (node, event) => verifyOtp(event),
+        backToEmail: backToEmail,
+    });
     </script>
 </body>
 </html>

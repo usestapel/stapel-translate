@@ -1,4 +1,5 @@
 {% extends "dashboard/base.html" %}
+{% load stapel_translate %}
 
 {% block title %}{{ translation.key }} - Translator{% endblock %}
 
@@ -317,7 +318,7 @@
     <span>/</span>
     <span>Edit</span>
     <span style="margin-left: auto;"></span>
-    <select class="form-select source-picker" style="margin-left: 0.5rem;" onchange="changeSourceFilter(this.value)">
+    <select class="form-select source-picker" style="margin-left: 0.5rem;" data-change="changeSourceFilter">
         <option value="">All sources</option>
         {% for src in sources %}
         <option value="{{ src }}" {% if src == source_filter %}selected{% endif %}>{{ src }}</option>
@@ -330,7 +331,7 @@
 <div class="d-flex gap-3" style="flex-wrap: wrap; margin-top: 0.375rem;">
     <!-- Screenshot sidebar (desktop only) -->
     {% if translation.screenshot %}
-    <div class="screenshot-sidebar" onclick="openScreenshot()">
+    <div class="screenshot-sidebar" data-click="openScreenshot">
         <img src="{{ translation.screenshot.url }}" alt="Screenshot">
     </div>
     {% endif %}
@@ -342,13 +343,13 @@
             <div class="d-flex justify-between align-center">
                 <span class="text-muted" style="font-size: 0.75rem;">{{ current_position }} / {{ total_count }}</span>
                 {% if is_privileged %}
-                <button type="button" class="btn btn-sm" style="background: var(--danger); color: white;" onclick="openDeleteModal()">Delete</button>
+                <button type="button" class="btn btn-sm" style="background: var(--danger); color: white;" data-click="openDeleteModal">Delete</button>
                 {% endif %}
             </div>
 
             <div class="header-with-thumb">
                 {% if translation.screenshot %}
-                <div class="screenshot-thumb" onclick="openScreenshot()">
+                <div class="screenshot-thumb" data-click="openScreenshot">
                     <img src="{{ translation.screenshot.url }}" alt="Screenshot">
                 </div>
                 {% endif %}
@@ -369,7 +370,7 @@
                             <div class="refs-list" style="margin-top: 0.25rem;">
                                 {% for ref in translation.refs %}
                                 {% if is_privileged %}
-                                <a href="{{ ref }}" target="_blank" class="btn btn-sm" style="font-size: 0.625rem; padding: 0.25rem 0.5rem;">{{ ref }}</a>
+                                <a href="{{ ref|safe_href }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="font-size: 0.625rem; padding: 0.25rem 0.5rem;">{{ ref }}</a>
                                 {% else %}
                                 <span class="ref-link">{{ ref }}</span>
                                 {% endif %}
@@ -444,7 +445,7 @@
                         {% if next_id %}
                         <a href="{% url 'dashboard-translation-page' next_id %}?lang={{ current_lang }}{% if filters %}&{{ filters }}{% endif %}" class="btn btn-secondary nav-next" title="{{ next_key }}">&rarr;</a>
                         {% endif %}
-                        <button type="button" class="btn llm-btn" onclick="openLlmModal()" style="margin-left: auto;">Ask AI</button>
+                        <button type="button" class="btn llm-btn" data-click="openLlmModal" style="margin-left: auto;">Ask AI</button>
                     </div>
                 </form>
             </div>
@@ -478,7 +479,7 @@
     <div class="modal" style="max-width: 400px;">
         <div class="modal-header">
             <span class="modal-title">Delete Translation</span>
-            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            <button type="button" class="modal-close" data-click="closeDeleteModal">&times;</button>
         </div>
         <div class="modal-body">
             <p>Are you sure you want to delete this translation?</p>
@@ -486,8 +487,8 @@
             <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.5rem;">This action cannot be undone.</p>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-            <button type="button" class="btn" style="background: var(--danger); color: white;" onclick="deleteTranslation()">Delete</button>
+            <button type="button" class="btn btn-secondary" data-click="closeDeleteModal">Cancel</button>
+            <button type="button" class="btn" style="background: var(--danger); color: white;" data-click="deleteTranslation">Delete</button>
         </div>
     </div>
 </div>
@@ -498,7 +499,7 @@
     <div class="modal">
         <div class="modal-header">
             <span class="modal-title">AI Translation Help</span>
-            <button class="modal-close" onclick="closeLlmModal()">&times;</button>
+            <button type="button" class="modal-close" data-click="closeLlmModal">&times;</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
@@ -526,22 +527,22 @@
             <div id="llm-all-results" class="llm-all-results" style="display: none;"></div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn llm-btn" onclick="translateSingle()" id="btn-translate-single">
+            <button type="button" class="btn llm-btn" data-click="translateSingle" id="btn-translate-single">
                 <span class="spinner" id="spinner-single" style="display: none;"></span>
                 Translate {{ current_lang_name }}
             </button>
             {% if is_privileged %}
-            <button type="button" class="btn btn-secondary" onclick="translateAll()" id="btn-translate-all">
+            <button type="button" class="btn btn-secondary" data-click="translateAll" id="btn-translate-all">
                 <span class="spinner" id="spinner-all" style="display: none;"></span>
                 Translate All Languages
             </button>
             {% endif %}
             <div style="flex: 1;"></div>
-            <button type="button" class="btn btn-success" onclick="applySingleAndReload()" id="btn-apply-single" style="display: none;">
+            <button type="button" class="btn btn-success" data-click="applySingleAndReload" id="btn-apply-single" style="display: none;">
                 Apply & Save
             </button>
             {% if is_privileged %}
-            <button type="button" class="btn btn-success" onclick="applyAllAndClose()" id="btn-apply-all" style="display: none;">
+            <button type="button" class="btn btn-success" data-click="applyAllAndClose" id="btn-apply-all" style="display: none;">
                 Apply All & Reload
             </button>
             {% endif %}
@@ -550,13 +551,13 @@
 </div>
 
 {% if translation.screenshot %}
-<div class="screenshot-lightbox" id="screenshot-lightbox" onclick="if(event.target===this)closeScreenshot()">
-    <button class="screenshot-lightbox-close" onclick="closeScreenshot()">&times;</button>
+<div class="screenshot-lightbox" id="screenshot-lightbox" data-click="closeScreenshotOnOverlay">
+    <button type="button" class="screenshot-lightbox-close" data-click="closeScreenshot">&times;</button>
     <img src="{{ translation.screenshot.url }}" alt="Screenshot">
 </div>
 {% endif %}
 
-<script>
+<script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
 const csrfToken = '{{ csrf_token }}';
 const translationId = {{ translation.id }};
 const currentLang = '{{ current_lang }}';
@@ -750,15 +751,16 @@ async function translateAll() {
 
         if (response.ok && data.suggestions) {
             lastAllSuggestions = data.suggestions;
-            // Build results HTML
-            let html = '';
+            // Model output is attacker-reachable (it echoes stored source
+            // text and a caller-supplied prompt) — it is rendered as text.
+            const rows = [];
             for (const [lang, value] of Object.entries(data.suggestions)) {
-                html += `<div class="llm-result">
-                    <div class="llm-result-lang">${lang}</div>
-                    <div class="llm-result-text">${value || '<em>Empty</em>'}</div>
-                </div>`;
+                const row = stapelDom.el('div', 'llm-result');
+                row.appendChild(stapelDom.el('div', 'llm-result-lang', lang));
+                row.appendChild(stapelDom.el('div', 'llm-result-text', value || 'Empty'));
+                rows.push(row);
             }
-            allResultsDiv.innerHTML = html;
+            stapelDom.replace(allResultsDiv, rows);
             allResultsDiv.style.display = 'block';
             btnApplyAll.style.display = 'inline-flex';
         } else {
@@ -866,6 +868,22 @@ function closeScreenshot() {
     const el = document.getElementById('screenshot-lightbox');
     if (el) el.classList.remove('active');
 }
+
+stapelDom.register({
+    openScreenshot: openScreenshot,
+    closeScreenshot: closeScreenshot,
+    closeScreenshotOnOverlay: (node, event) => { if (event.target === node) closeScreenshot(); },
+    openDeleteModal: openDeleteModal,
+    closeDeleteModal: closeDeleteModal,
+    deleteTranslation: deleteTranslation,
+    openLlmModal: openLlmModal,
+    closeLlmModal: closeLlmModal,
+    translateSingle: translateSingle,
+    translateAll: translateAll,
+    applySingleAndReload: applySingleAndReload,
+    applyAllAndClose: applyAllAndClose,
+    changeSourceFilter: (node) => changeSourceFilter(node.value),
+});
 
 // Close modals on Escape
 document.addEventListener('keydown', function(e) {

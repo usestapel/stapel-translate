@@ -1,4 +1,4 @@
-<!doctype html>
+{% load stapel_translate %}<!doctype html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
@@ -651,7 +651,7 @@
                     </button>
                     <div class="services-dropdown-menu">
                         {% for service in stapel_services %}
-                        <a href="{{ service.admin_url }}">{{ service.name }} Admin</a>
+                        <a href="{{ service.admin_url|safe_href }}">{{ service.name }} Admin</a>
                         {% endfor %}
                         {% for service in stapel_services %}{% if service.swagger_url %}
                         {% if forloop.first %}<hr
@@ -661,7 +661,7 @@
                                 border-top: 1px solid var(--gray-200);
                             "
                         />{% endif %}
-                        <a href="{{ service.swagger_url }}">{{ service.name }} API</a>
+                        <a href="{{ service.swagger_url|safe_href }}">{{ service.name }} API</a>
                         {% endif %}{% endfor %}
                         {% for section, links in stapel_nav_sections.items %}
                         <hr
@@ -672,7 +672,7 @@
                             "
                         />
                         {% for link in links %}
-                        <a href="{{ link.url }}"{% if link.external %} target="_blank"{% endif %}>{{ link.title }}</a>
+                        <a href="{{ link.url|safe_href }}"{% if link.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.title }}</a>
                         {% endfor %}
                         {% endfor %}
                     </div>
@@ -681,7 +681,7 @@
                 <div class="navbar-user">
                     {% if user.is_authenticated %}
                     <span>{{ user.email }}</span>
-                    <button onclick="logout()" class="btn btn-secondary btn-sm">
+                    <button type="button" data-click="logout" class="btn btn-secondary btn-sm">
                         Logout
                     </button>
                     {% endif %}
@@ -699,10 +699,12 @@
             {% block content %}{% endblock %}
         </div>
 
+        {% include "dashboard/_safe_dom.html" %}
+
         {% block extra_js %}{% endblock %}
 
         <!-- Token refresh every 5 minutes + logout -->
-        <script>
+        <script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
             (function () {
                 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -745,6 +747,8 @@
                 }
                 window.location.href = '{% url "dashboard-login" %}';
             }
+
+            window.stapelDom.register({logout: logout});
         </script>
     </body>
 </html>

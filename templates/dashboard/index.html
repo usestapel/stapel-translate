@@ -101,14 +101,15 @@
         <form method="post" action="{% url 'dashboard-collect-keys' %}" style="display: inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-secondary"
-                onclick="return confirm('Collect error and notification keys from all services?')">
+                data-click="confirm"
+                data-confirm-text="Collect error and notification keys from all services?">
                 Collect
             </button>
         </form>
-        <button class="btn btn-secondary" onclick="openExportModal()">
+        <button type="button" class="btn btn-secondary" data-click="openExportModal">
             Export
         </button>
-        <button class="btn btn-secondary" onclick="openImportModal()">
+        <button type="button" class="btn btn-secondary" data-click="openImportModal">
             Import
         </button>
     </div>
@@ -121,7 +122,7 @@
         <select
             class="form-select"
             style="width: auto"
-            onchange="filterBySource(this.value)"
+            data-change="filterBySource"
         >
             <option value="">All sources</option>
             {% for source in sources %}
@@ -190,7 +191,7 @@
     <div class="modal">
         <div class="modal-header">
             <span class="modal-title">Export Translations</span>
-            <button class="modal-close" onclick="closeExportModal()">
+            <button type="button" class="modal-close" data-click="closeExportModal">
                 &times;
             </button>
         </div>
@@ -198,7 +199,7 @@
             method="post"
             action="{% url 'dashboard-export' %}"
             target="_blank"
-            onsubmit="handleExportSubmit()"
+            data-submit="handleExportSubmit"
         >
             {% csrf_token %}
             <div class="modal-body">
@@ -248,7 +249,7 @@
                 <button
                     type="button"
                     class="btn btn-secondary"
-                    onclick="closeExportModal()"
+                    data-click="closeExportModal"
                 >
                     Cancel
                 </button>
@@ -264,7 +265,7 @@
     <div class="modal">
         <div class="modal-header">
             <span class="modal-title">Import Translations</span>
-            <button class="modal-close" onclick="closeImportModal()">
+            <button type="button" class="modal-close" data-click="closeImportModal">
                 &times;
             </button>
         </div>
@@ -304,7 +305,7 @@
                 <button
                     type="button"
                     class="btn btn-secondary"
-                    onclick="closeImportModal()"
+                    data-click="closeImportModal"
                 >
                     Cancel
                 </button>
@@ -316,7 +317,7 @@
 
 {% endif %}
 
-<script>
+<script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
     function filterBySource(source) {
         const url = new URL(window.location.href);
         if (source) {
@@ -326,6 +327,8 @@
         }
         window.location.href = url.toString();
     }
+
+    stapelDom.register({filterBySource: (node) => filterBySource(node.value)});
 
     {% if is_privileged %}
     function getCookie(name) {
@@ -368,7 +371,13 @@
         document.getElementById('import-modal').classList.remove('active');
     }
 
-    }
+    stapelDom.register({
+        openExportModal: openExportModal,
+        closeExportModal: closeExportModal,
+        handleExportSubmit: handleExportSubmit,
+        openImportModal: openImportModal,
+        closeImportModal: closeImportModal,
+    });
 
     // Close modals on Escape
     document.addEventListener('keydown', function(e) {

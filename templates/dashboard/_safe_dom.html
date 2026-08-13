@@ -1,0 +1,81 @@
+{% comment %}
+Shared DOM + event plumbing for every dashboard page.
+
+Two reasons this exists instead of per-page snippets:
+
+1. Every dashboard page renders strings this service does not control —
+   translation values, LLM suggestions, peer-service errors. Building markup
+   by concatenating them into innerHTML turns each one into a stored-XSS sink
+   against a staff session. `stapelDom` only ever creates nodes and sets
+   textContent, so there is one safe way to render and no reason to reach for
+   innerHTML again.
+2. Inline `on*=` handlers force `script-src 'unsafe-inline'`, which is the
+   same as having no script policy at all. Pages declare `data-click` /
+   `data-change` / `data-submit` and register a named handler here instead,
+   which is what lets the dashboard ship a nonce-based CSP.
+{% endcomment %}
+<script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
+window.stapelDom = (function () {
+    const actions = {};
+
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+    }
+
+    function resolve(target) {
+        return typeof target === 'string' ? document.getElementById(target) : target;
+    }
+
+    /* Replace a host element's children with created nodes — never markup. */
+    function replace(target, nodes) {
+        const host = resolve(target);
+        if (!host) return null;
+        const list = Array.isArray(nodes) ? nodes : [nodes];
+        host.replaceChildren.apply(host, list.filter(Boolean));
+        return host;
+    }
+
+    function setText(target, value) {
+        const host = resolve(target);
+        if (host) host.textContent = value === undefined || value === null ? '' : String(value);
+        return host;
+    }
+
+    /* Register named handlers: fn(element, event). */
+    function register(map) {
+        Object.assign(actions, map);
+    }
+
+    function dispatch(attr) {
+        return function (event) {
+            const start = event.target;
+            if (!start || typeof start.closest !== 'function') return;
+            const node = start.closest('[' + attr + ']');
+            if (!node) return;
+            const fn = actions[node.getAttribute(attr)];
+            if (typeof fn === 'function') fn(node, event);
+        };
+    }
+
+    document.addEventListener('click', dispatch('data-click'));
+    document.addEventListener('change', dispatch('data-change'));
+    document.addEventListener('submit', dispatch('data-submit'));
+
+    register({
+        /* Guard a native submit/navigation behind a confirm() prompt. */
+        confirm: function (node, event) {
+            if (!window.confirm(node.dataset.confirmText || 'Are you sure?')) {
+                event.preventDefault();
+            }
+        },
+        submitOwnForm: function (node) {
+            if (node.form) node.form.submit();
+        },
+    });
+
+    return {el: el, replace: replace, setText: setText, register: register};
+})();
+</script>
