@@ -12,6 +12,7 @@ from stapel_core.access import access
 from stapel_core.django.models import RevisionMixin
 
 from stapel_translate.conf import get_default_language
+from stapel_translate.storages import screenshot_storage
 from stapel_translate.utils import get_cache_key
 
 
@@ -40,7 +41,13 @@ class TranslationEntry(RevisionMixin, models.Model):
     comment = models.TextField(blank=True, default='')
     translator_comment = models.TextField(blank=True, default='', help_text="Notes from translator")
     refs = models.JSONField(default=list, blank=True, help_text="Admin URLs referencing this key")
-    screenshot = models.FileField(upload_to='screenshots/', blank=True, null=True, help_text="Screenshot of Figma screen where this key is used")
+    screenshot = models.FileField(
+        upload_to='screenshots/',
+        storage=screenshot_storage,
+        blank=True,
+        null=True,
+        help_text="Screenshot of Figma screen where this key is used",
+    )
 
     source = models.CharField(max_length=100, blank=True, default='')
     order = models.IntegerField(null=True, blank=True, db_index=True)

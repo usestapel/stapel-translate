@@ -10,6 +10,7 @@ Endpoints:
 
 import logging
 
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
@@ -46,8 +47,9 @@ from .figma_serializers import (
     FigmaTranslationUpsertRequestSerializer,
     FigmaTranslationUpsertResponseSerializer,
 )
-from .conf import LANGUAGE_NAMES, SUPPORTED_LANGUAGES
+from .conf import LANGUAGE_NAMES, SUPPORTED_LANGUAGES, translate_settings
 from .mixins import SerializerSeamMixin
+from .security import ScreenshotRejected, UnsafeUrl, decode_screenshot, validate_figma_url
 from .models import (
     FigmaApiKey,
     TranslationEntry,
@@ -86,6 +88,44 @@ class FigmaApiKeyAuthentication:
         key_obj.last_used_at = timezone.now()
         key_obj.save(update_fields=["last_used_at"])
         return key_obj, None
+
+    @staticmethod
+    def checked_figma_url(figma_url):
+        """``(url, None)`` when the ref is an allowed HTTPS Figma link.
+
+        Refs are rendered as links in a staff browser and are written by a
+        holder of one shared API key, so the allowlist has to sit at the
+        write boundary — validating only at render time would still leave
+        `javascript:` sitting in the database for every other consumer.
+        """
+        if not figma_url:
+            return "", None
+        try:
+            return validate_figma_url(figma_url), None
+        except UnsafeUrl as exc:
+            return None, StapelResponse(  # noqa: R006
+                {"error": f"Rejected figma_url: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @staticmethod
+    def within_quota(key_obj, bucket, limit):
+        """Whether this API key may spend one more unit of *bucket* this hour.
+
+        One global key authorises every plugin caller, so an unbounded
+        endpoint is an unbounded write channel for anyone who has it.
+        """
+        if not limit or limit <= 0:
+            return True
+        window = int(timezone.now().timestamp() // 3600)
+        cache_key = f"stapel_translate:figma-quota:{bucket}:{key_obj.pk}:{window}"
+        cache.add(cache_key, 0, timeout=3700)
+        try:
+            used = cache.incr(cache_key)
+        except ValueError:  # entry evicted between add and incr
+            cache.set(cache_key, 1, timeout=3700)
+            used = 1
+        return used <= int(limit)
 
 
 @extend_schema(tags=["Figma Plugin"])
@@ -249,6 +289,10 @@ class FigmaTranslationsView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
         author_email = request.data.get("author_email", "").strip() or None
         author_name = request.data.get("author_name", "").strip() or ""
         screen_name = request.data.get("screen_name", "").strip()
+
+        figma_url, error = self.checked_figma_url(figma_url)
+        if error:
+            return error
 
         if lang not in SUPPORTED_LANGUAGES:
             return StapelResponse(  # noqa: R006
@@ -491,6 +535,10 @@ class FigmaSearchByTextView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIV
         figma_url = request.data.get("figma_url", "").strip()
         screen_name = request.data.get("screen_name", "").strip()
 
+        figma_url, error = self.checked_figma_url(figma_url)
+        if error:
+            return error
+
         if not text:
             return StapelResponse(  # noqa: R006
                 {"error": "Text is required"}, status=status.HTTP_400_BAD_REQUEST
@@ -690,6 +738,9 @@ class FigmaSyncView(FigmaApiKeyAuthentication, SerializerSeamMixin, APIView):
                     "currentText": "",
                 }
             figma_url = (entry.get("figmaUrl") or "").strip()
+            figma_url, error = self.checked_figma_url(figma_url)
+            if error:
+                return error
             if figma_url and figma_url not in by_key[key]["refs"]:
                 by_key[key]["refs"].append(figma_url)
             container_name = (entry.get("containerName") or "").strip()
@@ -873,7 +924,7 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
         },
     )
     def post(self, request):  # noqa: R007
-        import base64
+        import secrets
 
         from django.core.files.base import ContentFile
 
@@ -881,8 +932,19 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
         if error:
             return error
 
+        if not self.within_quota(
+            key_obj, "screenshot", translate_settings.SCREENSHOT_UPLOADS_PER_HOUR
+        ):
+            logger.warning(
+                "[FigmaScreenshot] Quota exhausted for key=%s", key_obj.prefix
+            )
+            return StapelResponse(  # noqa: R006
+                {"error": "Screenshot upload quota exceeded, try again later"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         key = request.data.get("key", "").strip()
-        image_b64 = request.data.get("image", "").strip()
+        image_b64 = request.data.get("image", "")
 
         if not key:
             return StapelResponse(  # noqa: R006
@@ -903,22 +965,30 @@ class FigmaScreenshotUploadView(FigmaApiKeyAuthentication, SerializerSeamMixin, 
             )
 
         try:
-            image_data = base64.b64decode(image_b64)
-        except Exception:
+            image = decode_screenshot(image_b64)
+        except ScreenshotRejected as exc:
+            logger.warning("[FigmaScreenshot] Rejected upload for key=%s: %s", key, exc)
             return StapelResponse(  # noqa: R006
-                {"error": "Invalid base64 image data"},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST
             )
 
         # Delete old screenshot if exists
         if entry.screenshot:
             entry.screenshot.delete(save=False)
 
-        filename = f"{key.replace('.', '_').replace('/', '_')}.png"
-        entry.screenshot.save(filename, ContentFile(image_data), save=False)
+        # Random stem: the translation key is caller-controlled and the media
+        # path is guessable from it, so naming the file after the key hands
+        # out an enumerable index of every uploaded screen.
+        filename = f"{secrets.token_urlsafe(16)}.{image.extension}"
+        entry.screenshot.save(filename, ContentFile(image.data), save=False)
         entry.save(update_fields=["screenshot"])
 
-        logger.info(f"[FigmaScreenshot] Saved screenshot for key={key}")
+        logger.info(
+            "[FigmaScreenshot] Saved %s screenshot (%d bytes) for key=%s",
+            image.format,
+            len(image.data),
+            key,
+        )
 
         dto = FigmaScreenshotUploadResponse(key=key, uploaded=True)
         return StapelResponse(self.get_response_serializer_class()(dto))

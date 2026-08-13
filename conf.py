@@ -108,6 +108,48 @@ translate_settings = AppSettings(
             "/{prefix}/api/v1/error-keys/",  # v1 canon
             "/{prefix}/api/error-keys/",     # pre-v1 legacy
         ],
+        # -- Figma plugin ingestion bounds (see security.py) ---------------
+        # Hosts a `figma_url` ref may point at; subdomains of each are
+        # accepted, https only. A deployment fronting Figma behind its own
+        # domain adds it here — widening this is the only supported way to
+        # accept a non-figma.com ref.
+        "FIGMA_URL_ALLOWED_HOSTS": ["figma.com"],
+        # Screenshot upload caps. Bytes is the hard bound (declared and
+        # decoded); pixels/dimension need the `images` extra (Pillow) to be
+        # enforced, and are what stops a decompression bomb that fits inside
+        # the byte cap.
+        "SCREENSHOT_MAX_BYTES": 5 * 1024 * 1024,
+        "SCREENSHOT_MAX_PIXELS": 40_000_000,
+        "SCREENSHOT_MAX_DIMENSION": 20_000,
+        "SCREENSHOT_ALLOWED_FORMATS": ["png", "jpeg", "webp", "gif"],
+        # Per-API-key upload budget, sliding hourly window. 0 disables the
+        # quota — a global plugin key with no budget is an open write channel.
+        "SCREENSHOT_UPLOADS_PER_HOUR": 300,
+        # django STORAGES alias screenshots are written to. Media served
+        # straight off a public bucket exposes every uploaded screen: point
+        # this at a private alias on any deployment that has one.
+        "SCREENSHOT_STORAGE": "default",
+        # -- Dashboard response hardening (see csp.py) ---------------------
+        # Content-Security-Policy for the server-rendered staff dashboard.
+        # The templates carry no inline event handlers, so script-src needs
+        # no 'unsafe-inline'/'unsafe-hashes' — inline <script> blocks are
+        # authorised by a per-response nonce instead. Replace the whole dict
+        # to change the policy; set it to {} to send no header at all.
+        "DASHBOARD_CSP": {
+            "default-src": "'self'",
+            "script-src": "'self' {nonce}",
+            "style-src": "'self' 'unsafe-inline'",
+            "img-src": "'self' data:",
+            "font-src": "'self' data:",
+            "connect-src": "'self'",
+            "form-action": "'self'",
+            "frame-ancestors": "'none'",
+            "base-uri": "'none'",
+            "object-src": "'none'",
+        },
+        # Send the policy as Content-Security-Policy-Report-Only instead —
+        # for a deployment that needs to observe violations before enforcing.
+        "DASHBOARD_CSP_REPORT_ONLY": False,
     },
 )
 
