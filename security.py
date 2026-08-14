@@ -237,18 +237,40 @@ def decode_screenshot(
     return DecodedImage(data=data, format=fmt)
 
 
+def _image_verification_available() -> bool:
+    """Whether an image decoder is installed to enforce the raster bounds.
+
+    Deliberately not part of the module's declared surface: it exists so
+    ``checks.py`` can report the gap at boot, not so callers can branch on
+    it — ``decode_screenshot`` is the one place that decides.
+    """
+    try:
+        import PIL.Image  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def _verify_decodable(data: bytes, fmt: str) -> None:
     """Confirm a real decoder agrees, and that the raster is bounded.
 
-    Pillow is optional (``stapel-translate[images]``): without it the magic
-    sniff and the byte cap still stand, but a decompression bomb sized under
-    the byte cap would only be caught downstream. Install the extra on any
-    deployment that accepts plugin uploads.
+    Pillow is optional (``stapel-translate[images]``) and the byte cap alone
+    does not stop a decompression bomb, so a missing decoder REFUSES the
+    upload rather than waving it through — a bound that silently disappears
+    with the default install is not a bound. ``SCREENSHOT_ALLOW_UNVERIFIED_
+    UPLOADS`` is the explicit way to accept unchecked images anyway.
     """
     try:
         from PIL import Image
-    except ImportError:  # pragma: no cover - exercised only without the extra
-        return
+    except ImportError as exc:
+        if translate_settings.SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS:
+            return
+        raise ScreenshotRejected(
+            "image verification is unavailable: install the "
+            "stapel-translate[images] extra, or set STAPEL_TRANSLATE"
+            "['SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS'] = True to accept "
+            "uploads without pixel bounds"
+        ) from exc
 
     import io
 

@@ -2,6 +2,35 @@
 
 ## [Unreleased]
 
+### Security — BREAKING: screenshot uploads need an image decoder
+
+Closes TRANS-05 from the 2026-08-11 audit.
+
+`SCREENSHOT_MAX_PIXELS`, `SCREENSHOT_MAX_DIMENSION` and the
+format/signature cross-check are enforced with Pillow, which ships in the
+optional `stapel-translate[images]` extra. When it was absent those bounds
+were skipped silently (`except ImportError: return`) — so the *default*
+install accepted decompression bombs that fit inside `SCREENSHOT_MAX_BYTES`.
+
+**`POST figma/translations/screenshot/` now answers 400 on a host with no
+image decoder.** Install the extra wherever the Figma plugin endpoints are
+reachable:
+
+```
+pip install "stapel-translate[images]"
+```
+
+A new `manage.py check` warning (`stapel_translate.W002`) reports the
+missing decoder at boot instead of letting it surface as plugin 400s. To
+keep accepting uploads without pixel bounds — the previous behaviour —
+opt in explicitly:
+
+```python
+STAPEL_TRANSLATE = {"SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS": True}
+```
+
+That opt-in is itself reported (`stapel_translate.W003`).
+
 ### Security — screenshot uploads default to a storage alias of their own
 
 Closes TRANS-04 from the 2026-08-11 audit.

@@ -155,6 +155,12 @@ translate_settings = AppSettings(
         # to `default` (a fresh install still works) and the fallback is
         # reported by the stapel_translate.W001 system check — see checks.py.
         "SCREENSHOT_STORAGE": SCREENSHOT_STORAGE_ALIAS,
+        # Accept screenshot uploads even when no image decoder is installed.
+        # Without Pillow (`stapel-translate[images]`) the pixel/dimension
+        # caps and the format/signature cross-check cannot run, so a
+        # decompression bomb sized under SCREENSHOT_MAX_BYTES would pass.
+        # Uploads are refused instead; flip this to accept them unchecked.
+        "SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS": False,
         # -- Dashboard response hardening (see csp.py) ---------------------
         # Content-Security-Policy for the server-rendered staff dashboard.
         # The templates carry no inline event handlers, so script-src needs

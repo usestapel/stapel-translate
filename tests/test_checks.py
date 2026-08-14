@@ -1,18 +1,25 @@
-"""Configuration guards: uploads must not be silently public.
+"""Configuration guards: uploads must not be silently public or unbounded.
 
-The screenshot storage comment already named the risk ("Media served
-straight off a public bucket exposes every uploaded screen") and then
-shipped that value as the default.
+Both defaults these cover used to be the permissive one *quietly* — the
+screenshot storage comment already named the risk and then shipped it, and
+the pixel bounds vanished entirely on the default install because Pillow is
+an optional extra.
 """
+import sys
+
 import pytest
 from django.core.files.storage import InMemoryStorage
 from django.test import override_settings
 
 from stapel_translate.checks import (
     W001_PUBLIC_SCREENSHOT_STORAGE,
+    W002_NO_IMAGE_VERIFICATION,
+    W003_UNVERIFIED_UPLOADS_ALLOWED,
+    check_screenshot_image_verification,
     check_screenshot_storage,
 )
 from stapel_translate.conf import SCREENSHOT_STORAGE_ALIAS, translate_settings
+from stapel_translate.security import ScreenshotRejected, decode_screenshot
 from stapel_translate.storages import screenshot_storage, screenshot_storage_falls_back
 
 
@@ -45,6 +52,13 @@ def fake_storages(monkeypatch):
         return handler
 
     return install
+
+# 1x1 transparent PNG.
+PNG_1PX = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
 
 
 class TestScreenshotStorageDefault:
@@ -89,3 +103,38 @@ class TestScreenshotStorageDefault:
         fake_storages(default=InMemoryStorage())
         with pytest.raises(InvalidStorageError):
             screenshot_storage()
+
+
+@pytest.fixture
+def no_image_library(monkeypatch):
+    """Simulate the default install: `stapel-translate` without [images]."""
+    monkeypatch.setitem(sys.modules, "PIL", None)
+    monkeypatch.setitem(sys.modules, "PIL.Image", None)
+
+
+class TestScreenshotVerificationFailsClosed:
+    def test_missing_decoder_refuses_the_upload(self, no_image_library):
+        with pytest.raises(ScreenshotRejected, match="verification is unavailable"):
+            decode_screenshot(PNG_1PX)
+
+    def test_missing_decoder_is_reported_by_manage_py_check(self, no_image_library):
+        assert [w.id for w in check_screenshot_image_verification(None)] == [
+            W002_NO_IMAGE_VERIFICATION
+        ]
+
+    @override_settings(
+        STAPEL_TRANSLATE={"SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS": True}
+    )
+    def test_accepting_unchecked_uploads_is_an_explicit_opt_in(
+        self, no_image_library
+    ):
+        decoded = decode_screenshot(PNG_1PX)
+        assert decoded.format == "png"
+        assert [w.id for w in check_screenshot_image_verification(None)] == [
+            W003_UNVERIFIED_UPLOADS_ALLOWED
+        ]
+
+    def test_no_warning_when_the_decoder_is_installed(self):
+        pytest.importorskip("PIL")
+        assert check_screenshot_image_verification(None) == []
+        assert decode_screenshot(PNG_1PX).format == "png"
