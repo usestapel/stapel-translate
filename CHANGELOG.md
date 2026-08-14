@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+### Security — BREAKING: the read API no longer publishes authoring metadata
+
+Closes TRANS-03 from the 2026-08-11 audit.
+
+`GET /translate/api/v1/translations/` answers anonymous requests
+(`ReadOnlyOrSuperUser` passes every SAFE_METHOD), and its serializer used
+`fields = '__all__'` — so `comment` (developer notes),
+`translator_comment`, `refs` (Figma URLs of unreleased designs),
+`screenshot`, `source`, `order` and `llm_translated` were served to
+anyone who asked.
+
+**The response shape changed for unprivileged callers.** List and retrieve
+now carry `id`, `key`, `revision` and `values` only. Staff and superusers
+still receive the full authoring row (a second serializer,
+`TranslationEntrySerializer`, selected per request), so the dashboard and
+any staff tooling are unaffected.
+
+Restore the old shape for a client that genuinely needs a wider public
+surface by naming the columns explicitly:
+
+```python
+STAPEL_TRANSLATE = {
+    "PUBLIC_ENTRY_FIELDS": ["id", "key", "revision", "values", "order"],
+}
+```
+
+The default is the narrow list; widening it is the deliberate act. A
+column added to `TranslationEntry` in a future release stays off the
+public surface until it is named there.
+
 ### Security — BREAKING: the Figma plugin surface is now allowlisted and bounded
 
 Closes two P1 findings from the 2026-08-11 audit (TRANS-01, TRANS-02).

@@ -74,6 +74,80 @@ class TestTranslationViewSetList:
 
 
 @pytest.mark.django_db
+class TestPublicReadSurface:
+    """The read API is anonymous (ReadOnlyOrSuperUser passes SAFE_METHODs),
+    so what it serialises IS the public surface."""
+
+    #: Authoring metadata that must never reach an unprivileged caller.
+    INTERNAL_FIELDS = {
+        'comment',
+        'translator_comment',
+        'refs',
+        'screenshot',
+        'source',
+        'order',
+        'llm_translated',
+    }
+
+    def _entry_with_metadata(self):
+        entry = TranslationEntry.objects.create(
+            key='internal.key',
+            comment='ships next sprint',
+            translator_comment='keep it short',
+            refs=['https://figma.com/file/secret'],
+            source='backend:errors',
+            order=7,
+            llm_translated=True,
+        )
+        entry.set_value('en', 'Hello')
+        return entry
+
+    def test_anonymous_list_carries_no_internal_metadata(self, api_client):
+        self._entry_with_metadata()
+        response = api_client.get('/translate/api/v1/translations/')
+        assert response.status_code == status.HTTP_200_OK
+        item = response.data['results'][0]
+        assert set(item) == {'id', 'key', 'revision', 'values'}
+        assert self.INTERNAL_FIELDS.isdisjoint(set(item))
+
+    def test_anonymous_retrieve_carries_no_internal_metadata(self, api_client):
+        entry = self._entry_with_metadata()
+        response = api_client.get(f'/translate/api/v1/translations/{entry.id}/')
+        assert response.status_code == status.HTTP_200_OK
+        assert set(response.data) == {'id', 'key', 'revision', 'values'}
+
+    def test_authenticated_non_staff_gets_the_same_narrow_surface(
+        self, api_client, regular_user
+    ):
+        """A login is not a promotion: only staff/superusers see authoring
+        metadata, so a self-service account cannot read the Figma refs."""
+        self._entry_with_metadata()
+        api_client.force_authenticate(user=regular_user)
+        response = api_client.get('/translate/api/v1/translations/')
+        assert set(response.data['results'][0]) == {'id', 'key', 'revision', 'values'}
+
+    def test_staff_still_sees_the_full_authoring_row(self, api_client, superuser):
+        self._entry_with_metadata()
+        api_client.force_authenticate(user=superuser)
+        response = api_client.get('/translate/api/v1/translations/')
+        item = response.data['results'][0]
+        assert self.INTERNAL_FIELDS.issubset(set(item))
+        assert item['refs'] == ['https://figma.com/file/secret']
+
+    def test_public_fields_are_a_deployment_escape_hatch(self, api_client):
+        """Opening is the explicit act — the old ``__all__`` shape is only
+        reachable by naming the columns in PUBLIC_ENTRY_FIELDS."""
+        from django.test import override_settings
+
+        self._entry_with_metadata()
+        with override_settings(
+            STAPEL_TRANSLATE={'PUBLIC_ENTRY_FIELDS': ['id', 'key', 'comment']}
+        ):
+            response = api_client.get('/translate/api/v1/translations/')
+        assert set(response.data['results'][0]) == {'id', 'key', 'comment'}
+
+
+@pytest.mark.django_db
 class TestTranslationViewSetRetrieve:
     """Tests for Translation retrieve endpoint"""
 

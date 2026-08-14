@@ -64,6 +64,12 @@ DEFAULT_LANGUAGE_NAMES = {
     "he": "Hebrew",
 }
 
+# Fields the read API publishes to an unauthenticated caller. Everything
+# else on TranslationEntry is authoring metadata (developer comments, Figma
+# refs, screenshot URLs, provenance flags) that a UI-string consumer never
+# needs and an anonymous one must not receive.
+PUBLIC_ENTRY_FIELDS = ["id", "key", "revision", "values"]
+
 translate_settings = AppSettings(
     "STAPEL_TRANSLATE",
     defaults={
@@ -86,6 +92,11 @@ translate_settings = AppSettings(
         # Agent-side provider name; empty = the agent's DEFAULT_PROVIDER
         # decides (previously hardcoded "claude-code").
         "AGENT_PROVIDER": "",
+        # -- Read-API exposure ---------------------------------------------
+        # Entry fields served to a caller that is not staff/superuser. The
+        # read endpoints answer anonymous requests, so widening this list
+        # publishes those columns to the internet.
+        "PUBLIC_ENTRY_FIELDS": list(PUBLIC_ENTRY_FIELDS),
         # notifications service base URL (notification-keys collector).
         "NOTIFICATIONS_URL": "http://stapel-notifications:8000",
         # Where the notification-keys endpoint is mounted on that service,
@@ -252,6 +263,7 @@ LANGUAGE_NAMES = _LazyLanguageNames()
 
 __all__ = [
     "translate_settings",
+    "PUBLIC_ENTRY_FIELDS",
     "SUPPORTED_LANGUAGES",
     "LANGUAGE_NAMES",
     "DEFAULT_LANGUAGES",
