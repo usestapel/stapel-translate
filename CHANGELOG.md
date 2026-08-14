@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-08-14
+
+### Added — the three gdpr error keys the 2026-08-11 security wave introduced
+
+`stapel-gdpr` 0.4.0 registers three new error keys, and no corpus carried a
+translation for any of them — `stapel-gdpr` ships no catalogs of its own, so
+every consumer that renders a localized error reference (stapel-auth is the
+reference case) fell back to the English literal:
+
+| Key | English |
+| --- | --- |
+| `error.403.gdpr.account_closed` | This account is being erased and can no longer be used. |
+| `error.410.gdpr.download_consumed` | Download link was already used. Request a new export. |
+| `error.503.gdpr.closure_unavailable` | Account closure is temporarily unavailable. Please retry later. |
+
+All three are now in `fixtures/builtin/{lang}.json` for all 20 default
+languages, alongside the seven `gdpr.*` errors already there — same
+provenance as the rest of the corpus (`source="stapel:builtin"`,
+`verified=True` on load). The builtin catalog goes from 256 to 259 keys.
+
+Strings only: no code, no schema and no migration changed.
+
 ## [0.6.0] — 2026-08-14
 
 ### Changed — requires stapel-core >= 0.24.0 (was `>=0.15.5`)
