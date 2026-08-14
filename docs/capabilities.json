@@ -59,7 +59,7 @@
       "name": "autofill_missing",
       "kind": "gate_function",
       "path": "stapel_translate.autofill.autofill_missing",
-      "intent": "Fill missing (key, language) translation values via the configured LLM provider, writing verified=False and a TranslationHistory row per fill. This is the core logic behind the translate.autofill comm task and the autofill_translations command — call it directly instead of looping get_llm_provider().translate() yourself when triggering autofill from custom code (e.g. right after a new language is added)."
+      "intent": "Fill missing (key, language) translation values via the configured LLM provider, writing verified=False and a TranslationHistory row per fill. This is the core logic behind the translate.autofill comm task and the autofill_translations command — call it directly instead of looping get_llm_provider().translate() yourself when triggering autofill from custom code (e.g. right after a new language is added). Every run is bounded: limit=None means the AUTOFILL_MAX_VALUES ceiling rather than the whole catalogue times every language, and a larger limit is clamped to it, so the returned stats carry the limit actually applied."
     },
     {
       "name": "autofill_targets",

@@ -103,6 +103,22 @@ translate_settings = AppSettings(
         # Agent-side provider name; empty = the agent's DEFAULT_PROVIDER
         # decides (previously hardcoded "claude-code").
         "AGENT_PROVIDER": "",
+        # -- Autofill bounds and authority (see autofill.py, tasks.py) -----
+        # Hard cap on values filled in a single autofill run. Each one is an
+        # LLM call, and an uncapped run walks the whole catalogue times
+        # every configured language. A caller's own `limit` narrows this;
+        # nothing widens it but raising the number (there is no
+        # 0-means-unlimited sentinel — an unlimited default is what this
+        # setting exists to remove).
+        "AUTOFILL_MAX_VALUES": 200,
+        # A comm call carries no session, so the payload must carry the
+        # authority. `translate.autofill` spends money on someone's LLM
+        # budget; while this is on (the default) a call naming no trusted
+        # caller is refused. An internal caller is a caller, not an
+        # exemption.
+        "INTERNAL_REQUIRE_CALLER": True,
+        # Service names allowed to invoke this module's comm tasks.
+        "INTERNAL_TRUSTED_SERVICES": [],
         # -- Translator scoping (see permissions.py) -----------------------
         # Read an AuthorizedTranslator with an empty `allowed_languages` as
         # "may edit every language" — how it behaved before 0.5.8, and how

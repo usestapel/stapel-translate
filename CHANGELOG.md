@@ -2,6 +2,42 @@
 
 ## [Unreleased]
 
+### Security — BREAKING: `translate.autofill` is bounded and needs a caller
+
+Closes TRANS-07 from the 2026-08-11 audit.
+
+The `translate.autofill` comm task had **no caller identity check at all**
+and took `limit=None` to mean unlimited — so any peer on the bus could
+walk the whole catalogue times every configured language, one LLM call
+each, on someone's budget.
+
+**Both defaults changed.**
+
+1. A call must name a trusted caller:
+
+   ```python
+   start("translate.autofill", {"caller_service": "stapel-studio", ...})
+   ```
+
+   ```python
+   STAPEL_TRANSLATE = {"INTERNAL_TRUSTED_SERVICES": ["stapel-studio"]}
+   ```
+
+   The default list is empty, so **every existing caller is refused until
+   it is listed**. Restore the old unauthenticated behaviour with
+   `INTERNAL_REQUIRE_CALLER = False` (same vocabulary as stapel-docs).
+
+2. `AUTOFILL_MAX_VALUES` (default `200`) caps a single run. A caller's own
+   `limit` may ask for fewer, never more; `limit=None` now means the
+   ceiling, not "everything". There is deliberately no `0`-means-unlimited
+   sentinel — raise the number to raise the bound. The returned stats
+   carry the `limit` actually applied.
+
+`manage.py autofill_translations` gained `--caller-service` and refuses up
+front with a `CommandError` rather than printing a task id for work that
+will be rejected. `--sync` runs inline, where the shell is the authority,
+and needs no caller.
+
 ### Security — BREAKING: an empty translator language scope now grants nothing
 
 Closes TRANS-06 from the 2026-08-11 audit.

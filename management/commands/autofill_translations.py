@@ -1,13 +1,15 @@
 """Start (or run inline) the ``translate.autofill`` comm task.
 
 Default mode enqueues the task through ``stapel_core.comm.start`` — the
-work happens wherever the taskstore executor runs. ``--sync`` runs the
-autofill inline in this process and prints the stats.
+work happens wherever the taskstore executor runs, so it goes through the
+same caller check as any other peer and needs ``--caller-service``.
+``--sync`` runs the autofill inline in this process, where the shell is
+the authority, and prints the stats.
 """
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from stapel_translate.tasks import AUTOFILL_TASK
+from stapel_translate.tasks import AUTOFILL_TASK, CallerNotAuthorized, authorize_caller
 
 
 class Command(BaseCommand):
@@ -31,6 +33,14 @@ class Command(BaseCommand):
             "--sync",
             action="store_true",
             help="Run inline in this process instead of starting a comm task.",
+        )
+        parser.add_argument(
+            "--caller-service",
+            help=(
+                "Service name to start the comm task as; must be listed in "
+                "STAPEL_TRANSLATE['INTERNAL_TRUSTED_SERVICES']. Not needed "
+                "with --sync."
+            ),
         )
 
     def handle(self, *args, **options):
@@ -67,6 +77,15 @@ class Command(BaseCommand):
             for err in stats["errors"]:
                 self.stderr.write(self.style.WARNING(f"  {err}"))
             return
+
+        payload["caller_service"] = options["caller_service"] or ""
+        # Decide here rather than let the refusal happen inside the task:
+        # `start()` would report a task id and the work would simply never
+        # run, which is the silent failure this check exists to prevent.
+        try:
+            authorize_caller(payload)
+        except CallerNotAuthorized as exc:
+            raise CommandError(f"{exc}. Use --sync to run inline instead.") from exc
 
         from stapel_core.comm import start
 

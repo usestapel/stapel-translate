@@ -8,11 +8,26 @@ dashboard review flow is untouched.
 
 import logging
 
-from .conf import get_default_language, get_supported_languages
+from .conf import get_default_language, get_supported_languages, translate_settings
 from .models import TranslationEntry, TranslationHistory
 from .providers import get_llm_provider
 
 logger = logging.getLogger(__name__)
+
+
+def _effective_limit(limit):
+    """The number of values a single run may fill.
+
+    ``AUTOFILL_MAX_VALUES`` is a ceiling, not a default: a caller may ask
+    for fewer, never for more. It applies to every entry point — the comm
+    task, the management command and a direct call — because each one used
+    to accept ``limit=None`` and walk the entire catalogue times every
+    configured language, one LLM call at a time.
+    """
+    ceiling = int(translate_settings.AUTOFILL_MAX_VALUES)
+    if limit is None:
+        return ceiling
+    return min(int(limit), ceiling)
 
 
 def autofill_targets(languages=None):
@@ -30,13 +45,17 @@ def autofill_missing(languages=None, keys=None, limit=None, provider=None):
     Args:
         languages: restrict to these language codes (subset of configured).
         keys: restrict to these translation keys.
-        limit: maximum number of values to fill in this run.
+        limit: maximum number of values to fill in this run. ``None`` means
+            the ``AUTOFILL_MAX_VALUES`` ceiling, not "unlimited"; a larger
+            number is clamped to it.
         provider: provider instance (defaults to the configured one).
 
     Returns:
         stats dict: {"filled": N, "failed": N, "languages": {lang: N},
-                     "errors": [first few error strings]}
+                     "errors": [first few error strings],
+                     "limit": N applied to this run}
     """
+    limit = _effective_limit(limit)
     provider = provider or get_llm_provider()
     default = get_default_language()
     target_langs = autofill_targets(languages)
@@ -106,4 +125,5 @@ def autofill_missing(languages=None, keys=None, limit=None, provider=None):
         "failed": failed,
         "languages": per_language,
         "errors": errors,
+        "limit": limit,
     }
