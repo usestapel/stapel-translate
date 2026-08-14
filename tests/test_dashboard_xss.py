@@ -8,6 +8,7 @@ and a policy on the response that leaves an injected node nothing to run.
 """
 import re
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 from django.urls import reverse
@@ -118,6 +119,62 @@ class TestStoredPayloadRendersInert:
         html = response.content.decode()
         assert XSS not in html
         assert "onerror=\"window.__pwned" not in html
+
+    def test_stored_payload_cannot_close_a_script_block(
+        self, client, translator, db
+    ):
+        """A `</script>` in a stored value would end the block early and turn
+        everything after it into markup, which is a different sink from the
+        node-building one and needs its own guard."""
+        entry = TranslationEntry.objects.create(
+            key="breakout.key",
+            comment='</script><script>window.__pwned=1</script>',
+            refs=[],
+        )
+        client.force_login(translator)
+        html = client.get(
+            reverse("dashboard-translation-page", args=[entry.pk])
+        ).content.decode()
+        assert "<script>window.__pwned" not in html
+        assert "&lt;/script&gt;" in html
+
+
+@pytest.mark.django_db
+class TestScriptContextLanguageCode:
+    """`<str:lang>` puts a caller-chosen string inside an inline script block.
+
+    The route never matches a slash, so `</script>` cannot arrive here — the
+    reachable break-out is a quote that ends the JS string literal.
+    """
+
+    BASE = "/translate/admin/dashboard/languages/"
+
+    @pytest.mark.parametrize(
+        "lang",
+        [
+            "';window.__pwned=1;'",
+            '";window.__pwned=1;"',
+            "<script>",
+            "\\';window.__pwned=1;//",
+        ],
+    )
+    def test_hostile_language_code_never_reaches_the_template(
+        self, client, translator, lang
+    ):
+        """The view resolves the code against the configured languages and
+        redirects anything else, so a hostile code is never interpolated at
+        all. Losing that redirect would put the string into the script block.
+        """
+        client.force_login(translator)
+        response = client.get(f"{self.BASE}{quote(lang)}/")
+        # 302 = refused by the language allowlist, 404 = never routed at all.
+        assert response.status_code in (302, 404)
+        assert "window.__pwned" not in response.content.decode()
+
+    def test_a_configured_language_still_renders(self, client, translator):
+        client.force_login(translator)
+        response = client.get(f"{self.BASE}en/")
+        assert response.status_code == 200
 
 
 @pytest.mark.django_db
