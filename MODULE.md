@@ -60,7 +60,13 @@ name → environment variable → default.
 | `SCREENSHOT_MAX_DIMENSION` | `20_000` | Per-side cap, same header-only check |
 | `SCREENSHOT_ALLOWED_FORMATS` | `["png", "jpeg", "webp", "gif"]` | Sniffed from magic bytes, never from a declared content type |
 | `SCREENSHOT_UPLOADS_PER_HOUR` | `300` | Per-API-key upload budget (`0` disables). One global plugin key otherwise means an unbounded write channel; past the budget the endpoint answers `429` |
-| `SCREENSHOT_STORAGE` | `"default"` | `STORAGES` alias `TranslationEntry.screenshot` writes to. Point it at a private alias so uploaded screens are not served off a public bucket; repointing does not move existing files |
+| `SCREENSHOT_STORAGE` | `"stapel_translate_screenshots"` | `STORAGES` alias `TranslationEntry.screenshot` writes to. Define that alias with a private backend and uploads are private with nothing else to set; leave it undefined and writes fall back to `default` (public media on most deployments) with system check `stapel_translate.W001` saying so. Repointing does not move existing files |
+| `SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS` | `False` | Accept screenshots on a host with no image decoder. Off, a missing Pillow refuses the upload — the pixel/dimension caps and the format/signature cross-check cannot run without it, and the `images` extra is optional, so the default install was the fail-open one. Reported as `stapel_translate.W002`/`W003` |
+| `PUBLIC_ENTRY_FIELDS` | `["id", "key", "revision", "values"]` | Entry fields the read API serves to a caller that is not staff/superuser. The endpoints answer anonymous requests, so widening this publishes those columns (`comment`, `refs`, `screenshot`, …) to the internet |
+| `EMPTY_ALLOWED_LANGUAGES_MEANS_ALL` | `False` | Read an `AuthorizedTranslator` with an empty `allowed_languages` as "may edit every language". Off, empty is an empty scope — the field defaults to `[]`, so the old reading gave every new translator row the whole catalogue |
+| `AUTOFILL_MAX_VALUES` | `200` | Hard cap on values filled per autofill run (one LLM call each). A caller's `limit` may ask for fewer, never more; `limit=None` means this ceiling. No `0`-means-unlimited sentinel |
+| `INTERNAL_REQUIRE_CALLER` | `True` | Refuse a comm task whose payload names no trusted `caller_service`. A comm call has no session, so the payload carries the authority |
+| `INTERNAL_TRUSTED_SERVICES` | `[]` | Service names allowed to invoke this module's comm tasks |
 | `DASHBOARD_CSP` | see `conf.py` | Content-Security-Policy for the server-rendered dashboard, as `{directive: value}`. `{nonce}` in a value is replaced with the per-response nonce. `{}` sends no header. The shipped templates carry no inline `on*=` handlers, so the default needs no `unsafe-inline` for scripts — **an overridden template with inline handlers will break under it** |
 | `DASHBOARD_CSP_REPORT_ONLY` | `False` | Send the policy as `Content-Security-Policy-Report-Only` instead — for observing violations before enforcing |
 
@@ -78,8 +84,10 @@ this package.
 | Missing keys | **Omitted** from `values` — never returned as `null`; callers must handle absence |
 | Soft-deleted | Entries with `deleted=True` are never resolved |
 
-Related comm surfaces: `start("translate.autofill", {"languages": [...], "keys": [...], "limit": N})`
-(all payload keys optional; results stored `verified=False`), and the
+Related comm surfaces: `start("translate.autofill", {"caller_service": "...",
+"languages": [...], "keys": [...], "limit": N})` — `caller_service` must be listed
+in `INTERNAL_TRUSTED_SERVICES` while `INTERNAL_REQUIRE_CALLER` is on, the run is
+capped at `AUTOFILL_MAX_VALUES`, and results are stored `verified=False`. Plus the
 `translations.changed` event for cache invalidation in consumers.
 
 ### Adding / overriding translations
