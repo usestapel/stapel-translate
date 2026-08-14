@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stapel-translate"
-version = "0.5.7"
+version = "0.6.0"
 description = "AI-powered content translation Django app for the Stapel framework"
 readme = "README.md"
 license = { text = "MIT" }
@@ -25,9 +25,23 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    # >=0.15.5: stapel_core.django.peers (get_with_path_discovery / PathResolver /
-    # PeerRouteUnavailable) — both key collectors import it unconditionally.
-    "stapel-core>=0.15.5,<1.0",
+    # >=0.15.5 was the API floor: stapel_core.django.peers
+    # (get_with_path_discovery / PathResolver / PeerRouteUnavailable), which
+    # both key collectors import unconditionally. Still true, and still the
+    # oldest core this package can import against.
+    #
+    # Raised to >=0.24.0 by the TRANS-06 permission model this release ships.
+    # `is_privileged_user` (permissions.py) reads `user.is_staff` /
+    # `user.is_superuser` and returns ALL_LANGUAGES — the one path that is
+    # not bounded by a translator's `allowed_languages` scope. Before core
+    # 0.24.0, `JWT_CREATE_USERS_FROM_TOKEN` defaulted to True, which
+    # materialised unknown users locally AND replaced `is_staff` /
+    # `is_superuser` from the token's claims on every request. So on an older
+    # core, "empty scope grants nothing" is bypassed by any token asserting
+    # is_staff, and the scope model is decorative. 0.24.0 makes the local
+    # database authoritative by default; a service that genuinely consumes an
+    # external identity source sets the flag and says so.
+    "stapel-core>=0.24.0,<1.0",
 ]
 
 [project.urls]

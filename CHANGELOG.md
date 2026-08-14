@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-08-14
+
+### Changed — requires stapel-core >= 0.24.0 (was `>=0.15.5`)
+
+The TRANS-06 scope model below has exactly one unrestricted path:
+`is_privileged_user` reads `user.is_staff` / `user.is_superuser` and returns
+`ALL_LANGUAGES`. Before core 0.24.0, `JWT_CREATE_USERS_FROM_TOKEN` defaulted
+to `True`, which materialised unknown users locally **and replaced
+`is_staff` / `is_superuser` from the token's claims on every request** — so
+"an empty scope grants nothing" was bypassed by any token asserting
+`is_staff`, and the whole scope model was decorative. Core 0.24.0 makes the
+local database authoritative by default.
+
+`>=0.15.5` remains the API floor (`stapel_core.django.peers` —
+`get_with_path_discovery` / `PathResolver` / `PeerRouteUnavailable`, imported
+unconditionally by both key collectors); 0.24.0 is the floor this release's
+security posture actually rests on.
+
 ### Security — BREAKING: `translate.autofill` is bounded and needs a caller
 
 Closes TRANS-07 from the 2026-08-11 audit.
