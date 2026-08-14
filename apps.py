@@ -8,6 +8,10 @@ class TranslateConfig(AppConfig):
     verbose_name = "Stapel Translate"
 
     def ready(self):
+        # Configuration guards (`manage.py check`): importing the module is
+        # what registers them.
+        from . import checks  # noqa: F401
+
         from stapel_core.gdpr import gdpr_registry
         from .gdpr import TranslateGDPRProvider
         gdpr_registry.register(TranslateGDPRProvider())

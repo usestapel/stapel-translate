@@ -70,6 +70,17 @@ DEFAULT_LANGUAGE_NAMES = {
 # needs and an anonymous one must not receive.
 PUBLIC_ENTRY_FIELDS = ["id", "key", "revision", "values"]
 
+#: The dedicated ``STORAGES`` alias screenshots are written to by default.
+#: Naming an alias of our own (instead of the project-wide ``default``) means
+#: a deployment makes uploads private by defining it, with nothing else to
+#: remember to set.
+SCREENSHOT_STORAGE_ALIAS = "stapel_translate_screenshots"
+
+#: Where an undefined :data:`SCREENSHOT_STORAGE_ALIAS` lands. Keeping a fresh
+#: install working is worth more than a boot crash nobody can act on, but the
+#: fallback is a public-media exposure, so checks.py reports it every time.
+SCREENSHOT_STORAGE_FALLBACK_ALIAS = "default"
+
 translate_settings = AppSettings(
     "STAPEL_TRANSLATE",
     defaults={
@@ -137,9 +148,13 @@ translate_settings = AppSettings(
         # quota — a global plugin key with no budget is an open write channel.
         "SCREENSHOT_UPLOADS_PER_HOUR": 300,
         # django STORAGES alias screenshots are written to. Media served
-        # straight off a public bucket exposes every uploaded screen: point
-        # this at a private alias on any deployment that has one.
-        "SCREENSHOT_STORAGE": "default",
+        # straight off a public bucket exposes every uploaded screen, so the
+        # default names a dedicated alias rather than the project-wide
+        # `default` one: define it in STORAGES and uploads are private with
+        # no further configuration. An undefined dedicated alias falls back
+        # to `default` (a fresh install still works) and the fallback is
+        # reported by the stapel_translate.W001 system check — see checks.py.
+        "SCREENSHOT_STORAGE": SCREENSHOT_STORAGE_ALIAS,
         # -- Dashboard response hardening (see csp.py) ---------------------
         # Content-Security-Policy for the server-rendered staff dashboard.
         # The templates carry no inline event handlers, so script-src needs
@@ -264,6 +279,8 @@ LANGUAGE_NAMES = _LazyLanguageNames()
 __all__ = [
     "translate_settings",
     "PUBLIC_ENTRY_FIELDS",
+    "SCREENSHOT_STORAGE_ALIAS",
+    "SCREENSHOT_STORAGE_FALLBACK_ALIAS",
     "SUPPORTED_LANGUAGES",
     "LANGUAGE_NAMES",
     "DEFAULT_LANGUAGES",

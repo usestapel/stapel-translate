@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+### Security — screenshot uploads default to a storage alias of their own
+
+Closes TRANS-04 from the 2026-08-11 audit.
+
+`STAPEL_TRANSLATE["SCREENSHOT_STORAGE"]` defaulted to `"default"` — the
+project-wide media alias, normally served publicly — while its own comment
+warned that this exposes every uploaded product screen. The default is now
+the dedicated alias `"stapel_translate_screenshots"`.
+
+**Nothing breaks on upgrade.** If that alias is not defined in `STORAGES`,
+uploads still go to `default` exactly as before; the fallback is explicit
+and reported by a new `manage.py check` warning,
+`stapel_translate.W001`. To make screenshots private, define the alias —
+there is no second setting to remember:
+
+```python
+STORAGES = {
+    "default": {...},
+    "stapel_translate_screenshots": {"BACKEND": "...private bucket..."},
+}
+```
+
+An alias a deployment names itself and misspells still fails loudly at
+boot — only the package's own default alias degrades. **Repointing does
+not move already-uploaded files.**
+
 ### Security — BREAKING: the read API no longer publishes authoring metadata
 
 Closes TRANS-03 from the 2026-08-11 audit.
