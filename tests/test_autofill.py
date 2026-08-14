@@ -4,14 +4,26 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import override_settings
 
 from stapel_translate.autofill import autofill_missing, autofill_targets
+from stapel_translate.conf import translate_settings
 from stapel_translate.models import TranslationEntry, TranslationHistory
+from stapel_translate.tasks import CallerNotAuthorized, autofill_task
 
 FAKE_PROVIDER_SETTINGS = {
     "LANGUAGES": ["en", "de", "fr"],
     "LLM_PROVIDER": "stapel_translate.tests.test_autofill.FakeProvider",
+}
+
+TRUSTED_CALLER = "stapel-studio"
+
+# The comm surface is fail-closed by default (see TestAutofillAuthority), so
+# every test that expects the task to actually RUN has to name a caller.
+TRUSTED_PROVIDER_SETTINGS = {
+    **FAKE_PROVIDER_SETTINGS,
+    "INTERNAL_TRUSTED_SERVICES": [TRUSTED_CALLER],
 }
 
 class FakeProvider:
@@ -137,11 +149,14 @@ class TestAutofillCore:
 
 @pytest.mark.django_db
 class TestAutofillTask:
-    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    @override_settings(STAPEL_TRANSLATE=TRUSTED_PROVIDER_SETTINGS)
     def test_comm_start_runs_registered_handler(self, entries):
         from stapel_core.comm import start, status
 
-        task_id = start("translate.autofill", {"languages": ["fr"]})
+        task_id = start(
+            "translate.autofill",
+            {"languages": ["fr"], "caller_service": TRUSTED_CALLER},
+        )
 
         state = status(task_id)
         assert state.state == "done"
@@ -164,7 +179,7 @@ class TestAutofillCommand:
         assert partial.get_value("de") == "de:World"
         assert partial.get_value("fr") is None
 
-    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    @override_settings(STAPEL_TRANSLATE=TRUSTED_PROVIDER_SETTINGS)
     def test_default_mode_starts_comm_task(self, entries):
         out = StringIO()
         call_command(
@@ -173,9 +188,138 @@ class TestAutofillCommand:
             "b.partial",
             "--limit",
             "1",
+            "--caller-service",
+            TRUSTED_CALLER,
             stdout=out,
         )
         assert "Started task translate.autofill" in out.getvalue()
         # In-process transport executes the task synchronously in tests.
         partial = TranslationEntry.objects.get(key="b.partial")
         assert partial.get_value("de") == "de:World"
+
+
+@pytest.mark.django_db
+class TestAutofillIsBounded:
+    """``limit=None`` used to mean unlimited: every entry times every
+    configured language, one LLM call each, on whoever's budget."""
+
+    @pytest.fixture
+    def many_entries(self, db):
+        for i in range(10):
+            entry = TranslationEntry.objects.create(key=f"bulk.{i}")
+            entry.set_value("en", f"Hello {i}")
+
+    @override_settings(STAPEL_TRANSLATE={"LANGUAGES": ["en", "de", "fr"]})
+    def test_an_unlimited_request_is_capped_by_the_default(self, many_entries):
+        """20 fillable values (10 entries x 2 target languages) exist; the
+        default ceiling is what stops the run, not the catalogue's size."""
+        provider = FakeProvider()
+        stats = autofill_missing(limit=None, provider=provider)
+
+        ceiling = translate_settings.AUTOFILL_MAX_VALUES
+        assert stats["limit"] == ceiling
+        assert stats["filled"] == 20
+        assert len(provider.calls) == 20
+
+    @override_settings(
+        STAPEL_TRANSLATE={"LANGUAGES": ["en", "de", "fr"], "AUTOFILL_MAX_VALUES": 3}
+    )
+    def test_the_ceiling_stops_the_run(self, many_entries):
+        provider = FakeProvider()
+        stats = autofill_missing(limit=None, provider=provider)
+
+        assert stats["filled"] == 3
+        assert len(provider.calls) == 3
+
+    @override_settings(
+        STAPEL_TRANSLATE={"LANGUAGES": ["en", "de", "fr"], "AUTOFILL_MAX_VALUES": 3}
+    )
+    def test_a_caller_cannot_ask_for_more_than_the_ceiling(self, many_entries):
+        stats = autofill_missing(limit=999, provider=FakeProvider())
+        assert stats["limit"] == 3
+        assert stats["filled"] == 3
+
+    @override_settings(
+        STAPEL_TRANSLATE={"LANGUAGES": ["en", "de", "fr"], "AUTOFILL_MAX_VALUES": 100}
+    )
+    def test_a_caller_can_still_ask_for_less(self, many_entries):
+        stats = autofill_missing(limit=2, provider=FakeProvider())
+        assert stats["limit"] == 2
+        assert stats["filled"] == 2
+
+    @override_settings(STAPEL_TRANSLATE=TRUSTED_PROVIDER_SETTINGS)
+    def test_the_comm_task_is_bounded_too(self, entries):
+        from stapel_core.comm import start, status
+
+        state = status(
+            start("translate.autofill", {"caller_service": TRUSTED_CALLER})
+        )
+        assert state.state == "done"
+        assert state.result["limit"] == translate_settings.AUTOFILL_MAX_VALUES
+
+
+@pytest.mark.django_db
+class TestAutofillAuthority:
+    """A comm call carries no session, so the payload carries the authority.
+    The task had no caller check at all: any peer on the bus could spend the
+    LLM budget."""
+
+    # The fake provider is pinned on the refusal tests too: they must never
+    # be one deleted line away from reaching the configured LLM over HTTP.
+    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    def test_the_default_refuses_a_call_with_no_caller(self, entries):
+        with pytest.raises(CallerNotAuthorized):
+            autofill_task({"languages": ["fr"]})
+
+    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    def test_an_untrusted_caller_is_refused(self, entries):
+        with pytest.raises(CallerNotAuthorized):
+            autofill_task({"caller_service": "some-other-service"})
+
+    @override_settings(STAPEL_TRANSLATE=TRUSTED_PROVIDER_SETTINGS)
+    def test_a_trusted_caller_is_admitted(self, entries):
+        stats = autofill_task({"languages": ["fr"], "caller_service": TRUSTED_CALLER})
+        assert stats["filled"] == 1
+
+    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    def test_a_refused_call_spends_nothing(self, entries):
+        """Authority is decided before any provider work happens."""
+        with pytest.raises(CallerNotAuthorized):
+            autofill_task({})
+        assert TranslationEntry.objects.get(key="b.partial").get_value("fr") is None
+
+    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    def test_a_refused_call_over_comm_fails_the_task(self, entries):
+        from stapel_core.comm import start, status
+
+        state = status(start("translate.autofill", {"languages": ["fr"]}))
+        assert state.state != "done"
+        assert TranslationEntry.objects.get(key="b.partial").get_value("fr") is None
+
+    @override_settings(
+        STAPEL_TRANSLATE={
+            **FAKE_PROVIDER_SETTINGS,
+            "INTERNAL_REQUIRE_CALLER": False,
+        }
+    )
+    def test_the_old_unauthenticated_behaviour_is_restorable(self, entries):
+        stats = autofill_task({"languages": ["fr"]})
+        assert stats["filled"] == 1
+
+
+@pytest.mark.django_db
+class TestAutofillCommandAuthority:
+    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    def test_starting_the_task_without_a_caller_fails_loudly(self, entries):
+        """Never a task id for work that will be refused: `start()` would
+        report success and the autofill would simply never happen."""
+        with pytest.raises(CommandError, match="INTERNAL_TRUSTED_SERVICES"):
+            call_command("autofill_translations", stdout=StringIO())
+        assert TranslationEntry.objects.get(key="b.partial").get_value("de") is None
+
+    @override_settings(STAPEL_TRANSLATE=FAKE_PROVIDER_SETTINGS)
+    def test_sync_needs_no_caller_service(self, entries):
+        """The shell is the authority for an inline run."""
+        out = StringIO()
+        call_command("autofill_translations", "--sync", "--languages", "de", stdout=out)
+        assert "1 filled" in out.getvalue()

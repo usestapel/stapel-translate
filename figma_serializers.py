@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from stapel_core.django.api.serializers import StapelDataclassSerializer
+
+from .conf import translate_settings
 from .dto import (
     FigmaAuthResponse,
     FigmaTranslationsListResponse,
@@ -55,7 +57,15 @@ class FigmaScreenshotUploadResponseSerializer(StapelDataclassSerializer):
 # ── Request serializers (OpenAPI request-body documentation) ─────────────────
 # These describe the real ``request.data`` fields each Figma POST view reads.
 # The views authenticate via the ``X-Figma-API-Key`` header and parse the body
-# manually, so these serializers are used purely for schema generation.
+# manually, so these serializers are used purely for schema generation — the
+# published bounds below therefore have to be mirrored by a real check in the
+# view (see security.decode_screenshot / security.validate_figma_url), or the
+# schema promises a limit nothing enforces.
+
+
+def _screenshot_max_encoded_length():
+    """Encoded length matching the configured decoded byte cap."""
+    return (int(translate_settings.SCREENSHOT_MAX_BYTES) // 3 + 1) * 4 + 4
 
 
 class FigmaTranslationUpsertRequestSerializer(serializers.Serializer):
@@ -146,5 +156,12 @@ class FigmaRemoveRefRequestSerializer(serializers.Serializer):
 class FigmaScreenshotUploadRequestSerializer(serializers.Serializer):
     """Body for uploading a screen screenshot for a translation key."""
 
-    key = serializers.CharField(help_text="Translation key")
-    image = serializers.CharField(help_text="Base64-encoded PNG image")
+    key = serializers.CharField(max_length=255, help_text="Translation key")
+    image = serializers.CharField(
+        max_length=_screenshot_max_encoded_length(),
+        help_text=(
+            "Base64-encoded image (png/jpeg/webp/gif). Rejected unless the "
+            "decoded bytes are within SCREENSHOT_MAX_BYTES and really are one "
+            "of those formats."
+        ),
+    )

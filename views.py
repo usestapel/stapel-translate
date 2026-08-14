@@ -26,20 +26,35 @@ from .conf import SUPPORTED_LANGUAGES
 from .dto import LanguageRevisionResponse
 from .mixins import SerializerSeamMixin
 from .models import TranslationEntry, TranslationValue
-from .serializers import LanguageRevisionResponseSerializer, TranslationEntrySerializer
+from .permissions import is_privileged_user
+from .serializers import (
+    LanguageRevisionResponseSerializer,
+    TranslationEntryPublicSerializer,
+    TranslationEntrySerializer,
+)
 
 
 @extend_schema_view(
     data_json=extend_schema(
-        responses={200: TranslationEntrySerializer(many=True)},
+        responses={200: TranslationEntryPublicSerializer(many=True)},
     ),
 )
 @extend_schema(tags=["Translations"])
 class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = TranslationEntry.objects.filter(deleted=False).prefetch_related("values")
-    serializer_class = TranslationEntrySerializer
+    #: The narrow surface is the default, so a subclass that forgets to think
+    #: about exposure inherits the closed shape rather than the open one.
+    serializer_class = TranslationEntryPublicSerializer
+    #: The full authoring row, handed only to staff/superusers.
+    privileged_serializer_class = TranslationEntrySerializer
     permission_classes = [ReadOnlyOrSuperUser]
     pagination_class = RevisionPagination
+
+    def get_serializer_class(self):
+        user = getattr(self.request, "user", None)
+        if is_privileged_user(user):
+            return self.privileged_serializer_class
+        return super().get_serializer_class()
 
     @extend_schema(
         description="""List translations with revision-based pagination.
@@ -50,7 +65,7 @@ class TranslationEntryViewSet(RevisionViewSetMixin, viewsets.ReadOnlyModelViewSe
 3. Subsequent syncs: Call with `min_revision={stored_max}` to get only changes
 """,
         parameters=REVISION_PARAMETERS,
-        responses={200: TranslationEntrySerializer},
+        responses={200: TranslationEntryPublicSerializer},
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)

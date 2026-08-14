@@ -232,7 +232,10 @@ class AuthorizedTranslatorForm(forms.ModelForm):
         choices=_language_choices,
         widget=forms.CheckboxSelectMultiple,
         required=False,
-        help_text="Languages this translator can edit. Leave all unchecked = access to all languages.",
+        help_text=(
+            "Languages this translator can edit. Leave all unchecked and the "
+            "translator can edit none of them."
+        ),
     )
 
     class Meta:
@@ -264,9 +267,19 @@ class AuthorizedTranslatorAdmin(admin.ModelAdmin):
 
     @admin.display(description="Languages")
     def allowed_languages_display(self, obj):
+        """What the scope actually grants — the list, or how empty reads.
+
+        The empty reading is a setting, and a staff list showing "All" for
+        a scope that grants nothing (or the reverse) is how a permission
+        mistake stays invisible.
+        """
+        from .conf import translate_settings
+
         if obj.allowed_languages:
             return ", ".join(obj.allowed_languages)
-        return "All"
+        if translate_settings.EMPTY_ALLOWED_LANGUAGES_MEANS_ALL:
+            return "All"
+        return "None"
 
 
 @admin.register(FigmaApiKey)

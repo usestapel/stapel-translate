@@ -42,6 +42,7 @@ from .dto import (
     NavigationResponse,
 )
 from .conf import LANGUAGE_NAMES, SUPPORTED_LANGUAGES
+from .csp import CspMixin
 from .mixins import SerializerSeamMixin
 from .models import (
     AuthorizedTranslator,
@@ -929,7 +930,21 @@ class LLMHelpView(SerializerSeamMixin, APIView):
 # =============================================================================
 
 
-class AuthorizedTranslatorMixin(UserPassesTestMixin):
+class DashboardPageMixin(CspMixin):
+    """Everything a server-rendered dashboard page needs on the way out.
+
+    Templates carry inline <script> blocks authorised by the per-response
+    CSP nonce, so a page must render through :meth:`render_page` for its own
+    scripts to survive the policy the mixin attaches.
+    """
+
+    def render_page(self, request, template, context=None):
+        context = dict(context or {})
+        context.setdefault("csp_nonce", getattr(request, "csp_nonce", ""))
+        return render(request, template, context)
+
+
+class AuthorizedTranslatorMixin(DashboardPageMixin, UserPassesTestMixin):
     """Mixin to check if user is an authorized translator."""
 
     def test_func(self):
@@ -945,9 +960,9 @@ class AuthorizedTranslatorMixin(UserPassesTestMixin):
     def handle_no_permission(self):
         if self.request.user.is_authenticated:
             # Authenticated but not a translator — show "no access" page
-            from django.shortcuts import render
-
-            return render(self.request, "dashboard/login.html", {"no_access": True})
+            return self.render_page(
+                self.request, "dashboard/login.html", {"no_access": True}
+            )
         return redirect("dashboard-login")
 
 
@@ -1000,7 +1015,7 @@ class DashboardIndexPageView(AuthorizedTranslatorMixin, View):
                 }
             )
 
-        return render(
+        return self.render_page(
             request,
             "dashboard/index.html",
             {
@@ -1101,7 +1116,7 @@ class DashboardLanguagePageView(AuthorizedTranslatorMixin, View):
                 }
             )
 
-        return render(
+        return self.render_page(
             request,
             "dashboard/language.html",
             {
@@ -1212,7 +1227,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
             filters_parts.append(f"sort={sort_filter}")
         filters = "&".join(filters_parts)
 
-        return render(
+        return self.render_page(
             request,
             "dashboard/translation.html",
             {
@@ -1354,7 +1369,7 @@ class DashboardTranslationPageView(AuthorizedTranslatorMixin, View):
         return redirect(redirect_url)
 
 
-class DashboardLoginPageView(View):
+class DashboardLoginPageView(DashboardPageMixin, View):
     """Login page that handles auth via frontend JS."""
 
     def get(self, request):
@@ -1367,9 +1382,11 @@ class DashboardLoginPageView(View):
             ).exists():
                 return redirect("dashboard-index")
             # Authenticated but not a translator — show "no access" page
-            return render(request, "dashboard/login.html", {"no_access": True})
+            return self.render_page(
+                request, "dashboard/login.html", {"no_access": True}
+            )
 
-        return render(request, "dashboard/login.html")
+        return self.render_page(request, "dashboard/login.html")
 
 
 @method_decorator(csrf_exempt, name="dispatch")

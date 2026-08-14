@@ -59,7 +59,7 @@
       "name": "autofill_missing",
       "kind": "gate_function",
       "path": "stapel_translate.autofill.autofill_missing",
-      "intent": "Fill missing (key, language) translation values via the configured LLM provider, writing verified=False and a TranslationHistory row per fill. This is the core logic behind the translate.autofill comm task and the autofill_translations command — call it directly instead of looping get_llm_provider().translate() yourself when triggering autofill from custom code (e.g. right after a new language is added)."
+      "intent": "Fill missing (key, language) translation values via the configured LLM provider, writing verified=False and a TranslationHistory row per fill. This is the core logic behind the translate.autofill comm task and the autofill_translations command — call it directly instead of looping get_llm_provider().translate() yourself when triggering autofill from custom code (e.g. right after a new language is added). Every run is bounded: limit=None means the AUTOFILL_MAX_VALUES ceiling rather than the whole catalogue times every language, and a larger limit is clamped to it, so the returned stats carry the limit actually applied."
     },
     {
       "name": "autofill_targets",
@@ -146,7 +146,7 @@
       "name": "get_user_allowed_languages",
       "kind": "gate_function",
       "path": "stapel_translate.permissions.get_user_allowed_languages",
-      "intent": "The language whitelist a user may edit/verify — None means unrestricted (a privileged user, or a translator whose allowed_languages is empty). Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the 'empty list = all languages' convention."
+      "intent": "The language whitelist a user may edit/verify — ALL_LANGUAGES (None) means unrestricted and is reserved for privileged users; an empty list is an empty scope, not a wildcard. Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the EMPTY_ALLOWED_LANGUAGES_MEANS_ALL setting, and branch on `is not None` so the two never collapse into one another."
     },
     {
       "name": "is_privileged_user",
@@ -177,6 +177,42 @@
       "kind": "factory",
       "path": "stapel_translate.providers.get_llm_provider",
       "intent": "Instantiate the configured LLM_PROVIDER. Call this instead of importing a specific provider class directly whenever custom code (a management command, a one-off script) needs to run a translation exactly the way autofill/LLM-help do."
+    },
+    {
+      "name": "decode_screenshot",
+      "kind": "gate_function",
+      "path": "stapel_translate.security.decode_screenshot",
+      "intent": "Turn a base64 screenshot into bounded, sniffed, decoder-verified bytes, or raise ScreenshotRejected. Every bound runs before the next step does any work — encoded length, decoded length, magic bytes, then header dimensions — so call this instead of base64.b64decode() in any endpoint that accepts an uploaded image; the naive decode is what let arbitrary bytes be written to disk as a .png.",
+      "instead_of": [
+        "base64.b64decode"
+      ]
+    },
+    {
+      "name": "figma_url_allowed_hosts",
+      "kind": "gate_function",
+      "path": "stapel_translate.security.figma_url_allowed_hosts",
+      "intent": "The configured hosts a Figma ref may point at (FIGMA_URL_ALLOWED_HOSTS, normalised). Use it to render a helpful rejection message or a deployment check; validate_figma_url is what you call to actually decide."
+    },
+    {
+      "name": "is_safe_href",
+      "kind": "predicate",
+      "path": "stapel_translate.security.is_safe_href",
+      "intent": "Whether a stored string may go into an href/src without enabling script — an allowlist of http/https/mailto plus root-relative paths, normalised the way a browser normalises a scheme. Call this (or the |safe_href template filter) on any URL that came from the database or a peer service: Django's autoescaping protects the text of a value but happily keeps a javascript: scheme inside href=\"{{ ... }}\"."
+    },
+    {
+      "name": "safe_href",
+      "kind": "gate_function",
+      "path": "stapel_translate.security.safe_href",
+      "intent": "The URL if is_safe_href accepts it, else an empty string — the value to actually interpolate into an href. Reach for this rather than escaping or regex-stripping a URL yourself; an empty href is inert, a half-sanitised one is not. In templates use the |safe_href filter from {% load stapel_translate %}.",
+      "instead_of": [
+        "django.utils.html.escape"
+      ]
+    },
+    {
+      "name": "validate_figma_url",
+      "kind": "gate_function",
+      "path": "stapel_translate.security.validate_figma_url",
+      "intent": "Return an HTTPS Figma-host URL unchanged, or raise UnsafeUrl. This is the write-boundary check every Figma ingestion endpoint runs before a ref reaches the database — call it in any custom endpoint that accepts a figma_url instead of trusting the plugin, so a poisoned ref is never stored for every other consumer to render."
     }
   ],
   "operations_total": 22,

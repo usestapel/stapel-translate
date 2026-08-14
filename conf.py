@@ -64,6 +64,23 @@ DEFAULT_LANGUAGE_NAMES = {
     "he": "Hebrew",
 }
 
+# Fields the read API publishes to an unauthenticated caller. Everything
+# else on TranslationEntry is authoring metadata (developer comments, Figma
+# refs, screenshot URLs, provenance flags) that a UI-string consumer never
+# needs and an anonymous one must not receive.
+PUBLIC_ENTRY_FIELDS = ["id", "key", "revision", "values"]
+
+#: The dedicated ``STORAGES`` alias screenshots are written to by default.
+#: Naming an alias of our own (instead of the project-wide ``default``) means
+#: a deployment makes uploads private by defining it, with nothing else to
+#: remember to set.
+SCREENSHOT_STORAGE_ALIAS = "stapel_translate_screenshots"
+
+#: Where an undefined :data:`SCREENSHOT_STORAGE_ALIAS` lands. Keeping a fresh
+#: install working is worth more than a boot crash nobody can act on, but the
+#: fallback is a public-media exposure, so checks.py reports it every time.
+SCREENSHOT_STORAGE_FALLBACK_ALIAS = "default"
+
 translate_settings = AppSettings(
     "STAPEL_TRANSLATE",
     defaults={
@@ -86,6 +103,34 @@ translate_settings = AppSettings(
         # Agent-side provider name; empty = the agent's DEFAULT_PROVIDER
         # decides (previously hardcoded "claude-code").
         "AGENT_PROVIDER": "",
+        # -- Autofill bounds and authority (see autofill.py, tasks.py) -----
+        # Hard cap on values filled in a single autofill run. Each one is an
+        # LLM call, and an uncapped run walks the whole catalogue times
+        # every configured language. A caller's own `limit` narrows this;
+        # nothing widens it but raising the number (there is no
+        # 0-means-unlimited sentinel — an unlimited default is what this
+        # setting exists to remove).
+        "AUTOFILL_MAX_VALUES": 200,
+        # A comm call carries no session, so the payload must carry the
+        # authority. `translate.autofill` spends money on someone's LLM
+        # budget; while this is on (the default) a call naming no trusted
+        # caller is refused. An internal caller is a caller, not an
+        # exemption.
+        "INTERNAL_REQUIRE_CALLER": True,
+        # Service names allowed to invoke this module's comm tasks.
+        "INTERNAL_TRUSTED_SERVICES": [],
+        # -- Translator scoping (see permissions.py) -----------------------
+        # Read an AuthorizedTranslator with an empty `allowed_languages` as
+        # "may edit every language" — how it behaved before 0.5.8, and how
+        # a newly created translator row (the field defaults to []) got
+        # edit rights over the whole catalogue. Off: empty means empty, and
+        # a language scope has to be granted on purpose.
+        "EMPTY_ALLOWED_LANGUAGES_MEANS_ALL": False,
+        # -- Read-API exposure ---------------------------------------------
+        # Entry fields served to a caller that is not staff/superuser. The
+        # read endpoints answer anonymous requests, so widening this list
+        # publishes those columns to the internet.
+        "PUBLIC_ENTRY_FIELDS": list(PUBLIC_ENTRY_FIELDS),
         # notifications service base URL (notification-keys collector).
         "NOTIFICATIONS_URL": "http://stapel-notifications:8000",
         # Where the notification-keys endpoint is mounted on that service,
@@ -108,6 +153,58 @@ translate_settings = AppSettings(
             "/{prefix}/api/v1/error-keys/",  # v1 canon
             "/{prefix}/api/error-keys/",     # pre-v1 legacy
         ],
+        # -- Figma plugin ingestion bounds (see security.py) ---------------
+        # Hosts a `figma_url` ref may point at; subdomains of each are
+        # accepted, https only. A deployment fronting Figma behind its own
+        # domain adds it here — widening this is the only supported way to
+        # accept a non-figma.com ref.
+        "FIGMA_URL_ALLOWED_HOSTS": ["figma.com"],
+        # Screenshot upload caps. Bytes is the hard bound (declared and
+        # decoded); pixels/dimension need the `images` extra (Pillow) to be
+        # enforced, and are what stops a decompression bomb that fits inside
+        # the byte cap.
+        "SCREENSHOT_MAX_BYTES": 5 * 1024 * 1024,
+        "SCREENSHOT_MAX_PIXELS": 40_000_000,
+        "SCREENSHOT_MAX_DIMENSION": 20_000,
+        "SCREENSHOT_ALLOWED_FORMATS": ["png", "jpeg", "webp", "gif"],
+        # Per-API-key upload budget, sliding hourly window. 0 disables the
+        # quota — a global plugin key with no budget is an open write channel.
+        "SCREENSHOT_UPLOADS_PER_HOUR": 300,
+        # django STORAGES alias screenshots are written to. Media served
+        # straight off a public bucket exposes every uploaded screen, so the
+        # default names a dedicated alias rather than the project-wide
+        # `default` one: define it in STORAGES and uploads are private with
+        # no further configuration. An undefined dedicated alias falls back
+        # to `default` (a fresh install still works) and the fallback is
+        # reported by the stapel_translate.W001 system check — see checks.py.
+        "SCREENSHOT_STORAGE": SCREENSHOT_STORAGE_ALIAS,
+        # Accept screenshot uploads even when no image decoder is installed.
+        # Without Pillow (`stapel-translate[images]`) the pixel/dimension
+        # caps and the format/signature cross-check cannot run, so a
+        # decompression bomb sized under SCREENSHOT_MAX_BYTES would pass.
+        # Uploads are refused instead; flip this to accept them unchecked.
+        "SCREENSHOT_ALLOW_UNVERIFIED_UPLOADS": False,
+        # -- Dashboard response hardening (see csp.py) ---------------------
+        # Content-Security-Policy for the server-rendered staff dashboard.
+        # The templates carry no inline event handlers, so script-src needs
+        # no 'unsafe-inline'/'unsafe-hashes' — inline <script> blocks are
+        # authorised by a per-response nonce instead. Replace the whole dict
+        # to change the policy; set it to {} to send no header at all.
+        "DASHBOARD_CSP": {
+            "default-src": "'self'",
+            "script-src": "'self' {nonce}",
+            "style-src": "'self' 'unsafe-inline'",
+            "img-src": "'self' data:",
+            "font-src": "'self' data:",
+            "connect-src": "'self'",
+            "form-action": "'self'",
+            "frame-ancestors": "'none'",
+            "base-uri": "'none'",
+            "object-src": "'none'",
+        },
+        # Send the policy as Content-Security-Policy-Report-Only instead —
+        # for a deployment that needs to observe violations before enforcing.
+        "DASHBOARD_CSP_REPORT_ONLY": False,
     },
 )
 
@@ -210,6 +307,9 @@ LANGUAGE_NAMES = _LazyLanguageNames()
 
 __all__ = [
     "translate_settings",
+    "PUBLIC_ENTRY_FIELDS",
+    "SCREENSHOT_STORAGE_ALIAS",
+    "SCREENSHOT_STORAGE_FALLBACK_ALIAS",
     "SUPPORTED_LANGUAGES",
     "LANGUAGE_NAMES",
     "DEFAULT_LANGUAGES",

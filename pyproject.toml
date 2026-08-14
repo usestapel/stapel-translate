@@ -39,7 +39,11 @@ Issues = "https://github.com/usestapel/stapel-translate/issues"
 
 [project.optional-dependencies]
 kafka = ["confluent-kafka>=2.3"]
-all = ["stapel-translate[kafka]"]
+# Screenshot uploads are only fully validated (real decode, pixel/dimension
+# caps) when a decoder is present — install this wherever the Figma plugin
+# endpoints are reachable.
+images = ["Pillow>=10"]
+all = ["stapel-translate[kafka,images]"]
 
 [tool.setuptools]
 package-dir = {"stapel_translate" = "."}
@@ -48,6 +52,7 @@ packages = [
     "stapel_translate.management",
     "stapel_translate.management.commands",
     "stapel_translate.migrations",
+    "stapel_translate.templatetags",
 ]
 
 [tool.setuptools.package-data]
