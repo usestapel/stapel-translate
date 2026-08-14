@@ -103,6 +103,13 @@ translate_settings = AppSettings(
         # Agent-side provider name; empty = the agent's DEFAULT_PROVIDER
         # decides (previously hardcoded "claude-code").
         "AGENT_PROVIDER": "",
+        # -- Translator scoping (see permissions.py) -----------------------
+        # Read an AuthorizedTranslator with an empty `allowed_languages` as
+        # "may edit every language" — how it behaved before 0.5.8, and how
+        # a newly created translator row (the field defaults to []) got
+        # edit rights over the whole catalogue. Off: empty means empty, and
+        # a language scope has to be granted on purpose.
+        "EMPTY_ALLOWED_LANGUAGES_MEANS_ALL": False,
         # -- Read-API exposure ---------------------------------------------
         # Entry fields served to a caller that is not staff/superuser. The
         # read endpoints answer anonymous requests, so widening this list

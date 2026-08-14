@@ -33,7 +33,7 @@
     },
     "get_user_allowed_languages": {
       "kind": "gate_function",
-      "intent": "The language whitelist a user may edit/verify — None means unrestricted (a privileged user, or a translator whose allowed_languages is empty). Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the 'empty list = all languages' convention."
+      "intent": "The language whitelist a user may edit/verify — ALL_LANGUAGES (None) means unrestricted and is reserved for privileged users; an empty list is an empty scope, not a wildcard. Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the EMPTY_ALLOWED_LANGUAGES_MEANS_ALL setting, and branch on `is not None` so the two never collapse into one another."
     },
     "can_edit_language": {
       "kind": "predicate",

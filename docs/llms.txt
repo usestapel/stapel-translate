@@ -51,7 +51,7 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 - get_translator_name — stapel_translate.permissions.get_translator_name
   Display name for translation-history logging: the AuthorizedTranslator's name, else the user's full name/email, else empty. Use this instead of user.get_full_name() directly so history entries stay attributable even for a translator record with no linked platform account.
 - get_user_allowed_languages — stapel_translate.permissions.get_user_allowed_languages
-  The language whitelist a user may edit/verify — None means unrestricted (a privileged user, or a translator whose allowed_languages is empty). Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the 'empty list = all languages' convention.
+  The language whitelist a user may edit/verify — ALL_LANGUAGES (None) means unrestricted and is reserved for privileged users; an empty list is an empty scope, not a wildcard. Use this rather than reading AuthorizedTranslator.allowed_languages directly: it folds in the is_privileged_user short-circuit and the EMPTY_ALLOWED_LANGUAGES_MEANS_ALL setting, and branch on `is not None` so the two never collapse into one another.
 - safe_href — stapel_translate.security.safe_href
   instead of: django.utils.html.escape
   The URL if is_safe_href accepts it, else an empty string — the value to actually interpolate into an href. Reach for this rather than escaping or regex-stripping a URL yourself; an empty href is inert, a half-sanitised one is not. In templates use the |safe_href filter from {% load stapel_translate %}.

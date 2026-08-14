@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+### Security — BREAKING: an empty translator language scope now grants nothing
+
+Closes TRANS-06 from the 2026-08-11 audit.
+
+`AuthorizedTranslator.allowed_languages` defaults to `[]`, and an empty
+list meant "all languages" — so every translator row created without
+languages filled in (the state each one starts in) could edit and verify
+the whole catalogue in every language. Empty now means an empty scope.
+
+**Read this before upgrading if you have translator rows with an empty
+`allowed_languages`.** Those translators lose dashboard write access until
+their languages are named — in the admin, or in bulk:
+
+```python
+AuthorizedTranslator.objects.filter(allowed_languages=[]).update(
+    allowed_languages=["de", "fr"],
+)
+```
+
+Check what you have first:
+
+```
+AuthorizedTranslator.objects.filter(allowed_languages=[], is_active=True).count()
+```
+
+Staff and superusers are unaffected — `is_privileged_user` still takes the
+unrestricted path. To restore the old reading while you migrate the rows:
+
+```python
+STAPEL_TRANSLATE = {"EMPTY_ALLOWED_LANGUAGES_MEANS_ALL": True}
+```
+
+`get_user_allowed_languages` now also returns `[]` (not "all") for an
+authenticated user with no translator record at all. The unrestricted
+sentinel is exported as `stapel_translate.permissions.ALL_LANGUAGES`;
+call sites must keep branching on `is not None` so an empty scope never
+collapses back into it. Migration `0022` is help-text only — no column
+change, no data movement.
+
 ### Security — BREAKING: screenshot uploads need an image decoder
 
 Closes TRANS-05 from the 2026-08-11 audit.

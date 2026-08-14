@@ -22,7 +22,10 @@ class AuthorizedTranslator(models.Model):
     name = models.CharField(max_length=255, blank=True, default='')
     allowed_languages = models.JSONField(
         default=list, blank=True,
-        help_text="List of language codes this translator can edit. Empty = all languages."
+        help_text=(
+            "List of language codes this translator can edit. Empty grants "
+            "none of them (see EMPTY_ALLOWED_LANGUAGES_MEANS_ALL)."
+        ),
     )
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
