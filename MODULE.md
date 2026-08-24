@@ -19,9 +19,11 @@ customizable **without forking** this repository.
 | Comm task | `translate.autofill` — LLM autofill of missing values (`tasks.py`) |
 | Emits | `translations.changed` `{language, keys_changed}` (schema: `schemas/emits/translations.changed.json`), emitted from `TranslationValue.save()` when a value changes |
 | Consumes | `user.deleted` → GDPR erasure (`actions.py`; provider registered in `TranslateConfig.ready()`) |
-| HTTP API | `translate/api/` (entries CRUD, per-language data + revision sync), `translate/api/dashboard/`, `translate/api/figma/`, `translate/admin/dashboard/` staff HTML pages (`urls.py`) |
+| HTTP API | `translate/api/v1/` (entries CRUD, per-language data + revision sync, `POST text/` content translation), `translate/api/v1/dashboard/`, `translate/api/v1/figma/`, `translate/admin/dashboard/` staff HTML pages (`urls.py`) |
 | Management commands | `collect_translations`, `dump_translations`, `load_builtin_translations`, `autofill_translations`, `translation_backlog` |
 | Fixtures | `fixtures/builtin/{lang}.json` — curated translations for Stapel's own keys, loaded with `source="stapel:builtin"` |
+| Error keys | `errors.py` registers six `error.*.translate.*` codes (the `POST text/` refusals) with `ru`/`es` catalogs in `translations/` — this module is the fleet's error-key *collector*, which never stopped it from being a producer |
+| Contract artifacts | `docs/{schema,flows,errors,capabilities}.json` + `docs/llms.txt`, emitted by `make contract` from a single-module `{translate + core}` instance (`_codegen.py`) and gated against drift by `tests/test_contract.py` |
 
 Public API (`__all__`, lazily exported from `stapel_translate/__init__.py`):
 `translate_settings`, `SUPPORTED_LANGUAGES`, `LANGUAGE_NAMES`,
@@ -43,7 +45,14 @@ name → environment variable → default.
 | `LANGUAGES` | `DEFAULT_LANGUAGES` (20 codes, `en`…`he`) | List of codes; Django-style `(code, name)` tuples accepted (codes extracted); Django's untouched global `LANGUAGES` default is ignored |
 | `DEFAULT_LANGUAGE` | `"en"` | Source/fallback language for `translate.resolve` and autofill |
 | `LANGUAGE_NAMES` | `DEFAULT_LANGUAGE_NAMES` | `{code: display name}`; merged over the builtin names |
-| `LLM_PROVIDER` | `"stapel_translate.providers.AgentProvider"` | **Dotted-path seam.** Resolved with `import_string` in `get_llm_provider()` (a class object is also accepted). Contract: class with `translate(key, english_text, target_language, context) -> str`; subclass `providers.BaseTranslationProvider` to reuse prompt building; raise `TranslationProviderError` on failure. Builtin alternatives: `CommAgentProvider` (same agent facade via the `llm.complete` comm Function — in-process in a monolith, NATS in microservices), `OpenAICompatibleProvider` |
+| `LLM_PROVIDER` | `"stapel_translate.providers.AgentProvider"` | **Dotted-path seam.** Resolved with `import_string` in `get_llm_provider()` (a class object is also accepted). Contract: class with `translate(key, english_text, target_language, context) -> str`; **optionally** `complete(prompt) -> str`, which unlocks one-call batch content translation (see "Content translation" below). Subclass `providers.BaseTranslationProvider` to reuse prompt building; raise `TranslationProviderError` on failure. Builtin alternatives: `CommAgentProvider` (same agent facade via the `llm.complete` comm Function — in-process in a monolith, NATS in microservices), `OpenAICompatibleProvider` |
+| `TEXT_PERMISSIONS` | `["stapel_core.django.api.permissions.IsNotAnonymousUser"]` | **Permission seam** of `POST translate/api/v1/text/` — dotted DRF permission paths, **all** must pass, resolved per request. The default refuses anonymous callers because every cache miss spends real money; a public storefront opens it (`AllowAny`, and then `TEXT_ANON_THROTTLE` is the only brake), a paid product tightens it to its own plan gate. Setting `permission_classes` on a view subclass still wins — this is the default, not a ceiling |
+| `TEXT_THROTTLE` | `"30/min"` | DRF rate for `POST text/` (`ScopedRateThrottle`, scope `translate_text`). A library cannot own the project-wide `DEFAULT_THROTTLE_RATES`, so the rate is read from this namespace |
+| `TEXT_ANON_THROTTLE` | `"10/min"` | Rate for a caller with no identity. Dormant under the default permission; the only brake once `TEXT_PERMISSIONS` is opened |
+| `TEXT_MAX_CHARS` | `5000` | Length ceiling **per text**. Above it: `400 error.400.translate.text_too_long` with `{max_chars}` — its own code, so a client can offer to trim instead of retrying |
+| `TEXT_BATCH_MAX_ITEMS` | `50` | Most texts one `{"texts": [...]}` call may carry → `error.400.translate.batch_too_large` |
+| `TEXT_BATCH_MAX_CHARS` | `20000` | Combined length of a batch → `error.400.translate.batch_too_long` |
+| `TEXT_CACHE_TTL` | `2592000` (30 days) | How long a translation is remembered in the Django cache, keyed by a digest of (source, target, context hint, text). `0` disables caching — a cost decision, not a correctness one |
 | `LLM_OPENAI_BASE_URL` | `"https://api.openai.com/v1"` | For `OpenAICompatibleProvider` |
 | `LLM_OPENAI_API_KEY` | `""` | For `OpenAICompatibleProvider` |
 | `LLM_OPENAI_MODEL` | `"gpt-4o-mini"` | For `OpenAICompatibleProvider` |
@@ -89,6 +98,37 @@ Related comm surfaces: `start("translate.autofill", {"caller_service": "...",
 in `INTERNAL_TRUSTED_SERVICES` while `INTERNAL_REQUIRE_CALLER` is on, the run is
 capped at `AUTOFILL_MAX_VALUES`, and results are stored `verified=False`. Plus the
 `translations.changed` event for cache invalidation in consumers.
+
+### Content translation — `POST translate/api/v1/text/` (`text.py`, `views.py`)
+
+The other half of this module. Everything above translates catalogued UI-string
+**keys**; a listing description has no key and never will, so a viewer who
+wants to read it in their own language needs text in / text out. Same
+`LLM_PROVIDER` seam, so a deployment configures one provider and both halves
+follow it.
+
+| Aspect | Contract |
+|---|---|
+| Request | `{"text": str}` **or** `{"texts": [str]}` (exactly one), plus `target_lang` (required), `source_lang` (optional, defaults to `DEFAULT_LANGUAGE`), `context` (optional free-text domain hint) |
+| Response | `{"texts": [str], "text": str, "source_language": str, "target_language": str, "provider": str, "cached": bool}` — `text` is `texts[0]`, the single-text form's answer; `cached` is true only when **nothing** reached the provider |
+| Guard | `TEXT_PERMISSIONS` (settings-driven, per request), throttle scope `translate_text` |
+| Bounds | `TEXT_MAX_CHARS` / `TEXT_BATCH_MAX_ITEMS` / `TEXT_BATCH_MAX_CHARS`, each with its own error code |
+| Refusals | `error.400.translate.{text_required,text_too_long,batch_too_large,batch_too_long,unsupported_language}`, `error.502.translate.provider_unavailable`. The provider's own message never reaches the caller — it can carry an upstream URL or key fragment — and goes to the log instead |
+| Cache | Django cache, `TEXT_CACHE_TTL` seconds, keyed by a digest of (source, target, hint, text). A partially cached batch asks the provider only for the misses |
+| Same language in and out | Answered from the input, no provider call, `cached: true` — a translate button whose target happens to be the source must not bill anybody |
+
+**Batching.** A provider that implements `complete(prompt) -> str` gets the
+whole batch in **one** upstream call: the content prompt asks for a JSON array
+and `providers.parse_content_batch` validates the answer (parses, is a list,
+exactly the expected length, every item a non-empty string) before anything is
+zipped back onto the inputs — a misaligned array would hand a listing another
+listing's description. A malformed answer falls back to one call per text; that
+costs more, it is never wrong. A provider implementing only the historical
+`translate(...)` contract keeps working unchanged, one call per string.
+
+Call it from Python with `text.translate_texts(...)`, which applies the bounds,
+the language validation and the cache. `get_llm_provider().translate(...)` is
+the UI-string-**key** contract and applies none of them.
 
 ### Adding / overriding translations
 

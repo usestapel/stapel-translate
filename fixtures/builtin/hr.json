@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Primili ste ovu e-poruku jer ste pristali primati poruke od {company_name}.",
   "notification.footer.unsubscribe": "Odjava",
-  "notification.footer.manage": "Upravljanje obavijestima"
+  "notification.footer.manage": "Upravljanje obavijestima",
+  "error.400.translate.text_required": "Navedite tekst ili nepraznu listu tekstova",
+  "error.400.translate.text_too_long": "Tekst je dulji od {max_chars} znakova",
+  "error.400.translate.batch_too_large": "Skupina može sadržavati najviše {max_items} tekstova",
+  "error.400.translate.batch_too_long": "Skupina ukupno sadrži više od {max_chars} znakova",
+  "error.400.translate.unsupported_language": "Jezik {language} ovdje nije konfiguriran",
+  "error.502.translate.provider_unavailable": "Usluga prevođenja nije dostupna"
 }

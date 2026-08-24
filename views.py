@@ -1,3 +1,5 @@
+import logging
+
 from django.core.cache import cache
 from django.db.models import Max
 from drf_spectacular.types import OpenApiTypes as SpectacularTypes
@@ -5,6 +7,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from stapel_core.django.api.errors import (
     ERR_400_EXPECTED_LIST,
@@ -22,16 +25,23 @@ from stapel_core.django.openapi.schemas import (
     OpenApiTypes,
 )
 
-from .conf import SUPPORTED_LANGUAGES
+from .conf import SUPPORTED_LANGUAGES, translate_settings
 from .dto import LanguageRevisionResponse
+from .errors import ERR_502_PROVIDER_UNAVAILABLE
 from .mixins import SerializerSeamMixin
 from .models import TranslationEntry, TranslationValue
 from .permissions import is_privileged_user
+from .providers import TranslationProviderError
 from .serializers import (
     LanguageRevisionResponseSerializer,
+    TextTranslationRequestSerializer,
+    TextTranslationResponseSerializer,
     TranslationEntryPublicSerializer,
     TranslationEntrySerializer,
 )
+from .text import TextTranslationRefused, translate_texts
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema_view(
@@ -193,6 +203,122 @@ max revision from `/translations/revision` endpoint.
         response = Response(cached_data)
         response["Cache-Control"] = "public, max-age=2592000"  # 30 days
         return response
+
+
+class TextTranslationThrottle(ScopedRateThrottle):
+    """``ScopedRateThrottle`` whose rate comes from ``STAPEL_TRANSLATE``.
+
+    DRF resolves scoped rates from the project-wide ``DEFAULT_THROTTLE_RATES``
+    setting, which a library module cannot own, so the rate is read from this
+    module's own namespace instead (``TEXT_THROTTLE``).
+
+    A caller with no identity gets ``TEXT_ANON_THROTTLE``. That rate is
+    dormant under the default permission — anonymous callers are refused
+    outright — and becomes the only brake the moment a product opens
+    ``TEXT_PERMISSIONS`` for a public listing page, which is exactly when
+    nobody remembers to add one.
+    """
+
+    scope = "translate_text"
+
+    def allow_request(self, request, view):
+        self._request = request
+        return super().allow_request(request, view)
+
+    def get_rate(self):
+        user = getattr(getattr(self, "_request", None), "user", None)
+        if user is not None and not user.is_authenticated:
+            anon_rate = translate_settings.TEXT_ANON_THROTTLE
+            if anon_rate:
+                return str(anon_rate)
+        return str(translate_settings.TEXT_THROTTLE)
+
+
+@extend_schema(tags=["Translations"])
+class TextTranslationView(SerializerSeamMixin, APIView):
+    """Translate arbitrary content — the other half of this module (TR-1).
+
+    Everything else here translates catalogued UI-string *keys*. A listing
+    description has no key and never will, so a viewer who wants to read it
+    in their own language needs text in / text out. Same ``LLM_PROVIDER``
+    seam, so a deployment configures one provider and both halves follow it.
+
+    ``permission_classes`` resolves from ``STAPEL_TRANSLATE
+    ["TEXT_PERMISSIONS"]`` at request time rather than being pinned at
+    import, so a host opens the endpoint (a public storefront) or tightens
+    it (a paid-plan gate) from settings without subclassing this view.
+    Setting ``permission_classes`` on a subclass still wins — the setting is
+    the default, not a ceiling.
+    """
+
+    throttle_classes = [TextTranslationThrottle]
+    throttle_scope = "translate_text"
+    request_serializer_class = TextTranslationRequestSerializer
+    response_serializer_class = TextTranslationResponseSerializer
+
+    #: ``None`` means "ask the settings"; a list pins the view.
+    permission_classes = None
+
+    def get_permissions(self):
+        if self.permission_classes is not None:
+            return super().get_permissions()
+        from django.utils.module_loading import import_string
+
+        return [
+            import_string(dotted_path)()
+            for dotted_path in (translate_settings.TEXT_PERMISSIONS or [])
+        ]
+
+    @extend_schema(
+        summary="Translate arbitrary text",
+        description="""Translate a text — or a batch of short texts — into a configured language.
+
+Send **either** `text` (one string) **or** `texts` (a list, order preserved,
+translated in one provider call so a screen's copy keeps a consistent tone).
+`source_lang` defaults to the module's `DEFAULT_LANGUAGE`; `context` is a
+free-text domain hint that rides into the prompt.
+
+Bounded on purpose — every miss spends real money on an LLM budget:
+`TEXT_MAX_CHARS` per text (`error.400.translate.text_too_long`),
+`TEXT_BATCH_MAX_ITEMS` (`error.400.translate.batch_too_large`) and
+`TEXT_BATCH_MAX_CHARS` (`error.400.translate.batch_too_long`) per batch,
+throttled under scope `translate_text`, and cached for `TEXT_CACHE_TTL`
+seconds under a digest of (source, target, context, text).
+
+`text` in the response is `texts[0]` — the single-text form's answer, and a
+convenience for it.
+""",
+        request=TextTranslationRequestSerializer,
+        responses={
+            200: TextTranslationResponseSerializer,
+            400: OpenApiTypes.OBJECT,
+            429: OpenApiTypes.OBJECT,
+            502: OpenApiTypes.OBJECT,
+        },
+    )
+    def post(self, request):  # noqa: R007
+        serializer = self.get_request_serializer_class()(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        texts = list(data["texts"]) if "texts" in data else [data["text"]]
+
+        try:
+            result = translate_texts(
+                texts,
+                target_language=data["target_lang"],
+                source_language=data.get("source_lang") or None,
+                hint=data.get("context") or "",
+            )
+        except TextTranslationRefused as exc:
+            return StapelErrorResponse(400, exc.error_key, params=exc.params or None)
+        except TranslationProviderError:
+            # The provider's own message can carry an upstream URL or key
+            # fragment; the caller gets the localizable code and the detail
+            # goes to the log.
+            logger.exception("translate: content translation provider failed")
+            return StapelErrorResponse(502, ERR_502_PROVIDER_UNAVAILABLE)
+
+        return StapelResponse(self.get_response_serializer_class()(result))  # noqa: R006
 
 
 @extend_schema(tags=["Translations"])

@@ -30,6 +30,7 @@ from stapel_translate.figma_views import (
 from stapel_translate.views import (
     LanguageDataView,
     LanguageRevisionView,
+    TextTranslationView,
     TranslationEntryViewSet,
 )
 
@@ -41,6 +42,9 @@ api_urlpatterns = [
     path('', include(router.urls)),
     path('languages/revision/', LanguageRevisionView.as_view(), name='language-revision'),
     path('languages/<str:lang>/data/', LanguageDataView.as_view(), name='language-data'),
+    # Content translation (TR-1) — arbitrary text, no catalogue key. Guarded
+    # by TEXT_PERMISSIONS and throttled under scope "translate_text".
+    path('text/', TextTranslationView.as_view(), name='text-translate'),
 ]
 
 # Dashboard JSON API (called by the dashboard pages' JS)

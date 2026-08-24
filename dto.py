@@ -13,6 +13,26 @@ class LanguageRevisionResponse:
     revision: int
 
 
+@dataclass
+class TextTranslationResult:
+    """Content translation of one text or a batch of them (POST text/).
+
+    Attributes:
+        texts: Translations, in the order the texts were given. Example: ["Hola"]
+        text: First translation — the answer of the single-text form. Example: Hola
+        source_language: Source language, as given or defaulted. Example: en
+        target_language: Language the texts were translated into. Example: es
+        provider: Class name of the configured LLM provider. Example: AgentProvider
+        cached: Whether every returned text came from the cache. Example: false
+    """
+    texts: List[str]
+    text: str
+    source_language: str
+    target_language: str
+    provider: str
+    cached: bool
+
+
 # -- Dashboard DTOs --------------------------------------------------------
 
 

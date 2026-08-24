@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Вы получили это письмо, потому что согласились получать сообщения от {company_name}.",
   "notification.footer.unsubscribe": "Отписаться",
-  "notification.footer.manage": "Управление уведомлениями"
+  "notification.footer.manage": "Управление уведомлениями",
+  "error.400.translate.text_required": "Укажите либо текст, либо непустой список текстов",
+  "error.400.translate.text_too_long": "Текст длиннее {max_chars} символов",
+  "error.400.translate.batch_too_large": "В одном запросе допускается не более {max_items} текстов",
+  "error.400.translate.batch_too_long": "Суммарная длина текстов превышает {max_chars} символов",
+  "error.400.translate.unsupported_language": "Язык {language} здесь не настроен",
+  "error.502.translate.provider_unavailable": "Сервис перевода недоступен"
 }

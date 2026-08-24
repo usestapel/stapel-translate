@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Sie erhalten diese E-Mail, weil Sie dem Empfang von Nachrichten von {company_name} zugestimmt haben.",
   "notification.footer.unsubscribe": "Abmelden",
-  "notification.footer.manage": "Benachrichtigungen verwalten"
+  "notification.footer.manage": "Benachrichtigungen verwalten",
+  "error.400.translate.text_required": "Geben Sie entweder einen Text oder eine nicht leere Liste von Texten an",
+  "error.400.translate.text_too_long": "Der Text ist länger als {max_chars} Zeichen",
+  "error.400.translate.batch_too_large": "Ein Stapel darf höchstens {max_items} Texte enthalten",
+  "error.400.translate.batch_too_long": "Der Stapel umfasst insgesamt mehr als {max_chars} Zeichen",
+  "error.400.translate.unsupported_language": "Die Sprache {language} ist hier nicht konfiguriert",
+  "error.502.translate.provider_unavailable": "Der Übersetzungsdienst ist nicht verfügbar"
 }

@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "आपको यह ईमेल इसलिए मिला है क्योंकि आपने {company_name} से संदेश प्राप्त करने की सहमति दी थी।",
   "notification.footer.unsubscribe": "सदस्यता रद्द करें",
-  "notification.footer.manage": "सूचनाएँ प्रबंधित करें"
+  "notification.footer.manage": "सूचनाएँ प्रबंधित करें",
+  "error.400.translate.text_required": "कोई पाठ या पाठों की एक ग़ैर-खाली सूची दें",
+  "error.400.translate.text_too_long": "पाठ {max_chars} वर्णों से लंबा है",
+  "error.400.translate.batch_too_large": "एक बैच में अधिकतम {max_items} पाठ हो सकते हैं",
+  "error.400.translate.batch_too_long": "बैच में कुल मिलाकर {max_chars} से अधिक वर्ण हैं",
+  "error.400.translate.unsupported_language": "भाषा {language} यहाँ कॉन्फ़िगर नहीं है",
+  "error.502.translate.provider_unavailable": "अनुवाद सेवा उपलब्ध नहीं है"
 }

@@ -1,0 +1,54 @@
+{
+  "errors.es": {
+    "error.400.translate.batch_too_large": {
+      "hash": "f1eb83f452d86a1e",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.batch_too_long": {
+      "hash": "16a9715f8b2efaee",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.text_required": {
+      "hash": "79711f9b91d108bf",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.text_too_long": {
+      "hash": "32e62e8cca158afc",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.unsupported_language": {
+      "hash": "f0acfaa4e0b7f8c7",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.502.translate.provider_unavailable": {
+      "hash": "f7c80e4c8bca7eae",
+      "origin": "seed:stapel-builtin"
+    }
+  },
+  "errors.ru": {
+    "error.400.translate.batch_too_large": {
+      "hash": "f1eb83f452d86a1e",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.batch_too_long": {
+      "hash": "16a9715f8b2efaee",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.text_required": {
+      "hash": "79711f9b91d108bf",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.text_too_long": {
+      "hash": "32e62e8cca158afc",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.400.translate.unsupported_language": {
+      "hash": "f0acfaa4e0b7f8c7",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.502.translate.provider_unavailable": {
+      "hash": "f7c80e4c8bca7eae",
+      "origin": "seed:stapel-builtin"
+    }
+  }
+}

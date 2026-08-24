@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Ви отримали цей лист, тому що погодилися отримувати повідомлення від {company_name}.",
   "notification.footer.unsubscribe": "Відписатися",
-  "notification.footer.manage": "Керування сповіщеннями"
+  "notification.footer.manage": "Керування сповіщеннями",
+  "error.400.translate.text_required": "Вкажіть або текст, або непорожній список текстів",
+  "error.400.translate.text_too_long": "Текст довший за {max_chars} символів",
+  "error.400.translate.batch_too_large": "В одному запиті дозволено щонайбільше {max_items} текстів",
+  "error.400.translate.batch_too_long": "Загальна довжина текстів перевищує {max_chars} символів",
+  "error.400.translate.unsupported_language": "Мова {language} тут не налаштована",
+  "error.502.translate.provider_unavailable": "Сервіс перекладу недоступний"
 }

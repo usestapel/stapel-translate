@@ -2,6 +2,118 @@
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-24
+
+### Added — `POST /translate/api/v1/text/`, content translation (BACKEND-GAPS TR-1)
+
+Until now this module could only translate catalogued UI-string **keys**. A
+listing description has no key and never will, so the one thing a marketplace
+actually asks a translation service for — "show me this in my language" — was
+not on the surface at all. The nearest route was `dashboard/llm-help/`, which
+needs an existing `translation_id` and `IsAuthorizedTranslator`: a translator
+tool, not a reader's button. `@stapel/translate-react` specified
+`TranslatedText` / `TranslateButton` against nothing, gated behind a capability
+flag that could not be turned on.
+
+Text in, text out, over the same `LLM_PROVIDER` seam the dashboard and autofill
+already use, so a deployment configures one provider and both halves follow it:
+
+| Aspect | Contract |
+| --- | --- |
+| Request | `{"text": str}` **or** `{"texts": [str]}` (exactly one), `target_lang` (required), `source_lang` (optional), `context` (optional domain hint) |
+| Response | `{"texts": [str], "text": str, "source_language": str, "target_language": str, "provider": str, "cached": bool}` |
+| Guard | `TEXT_PERMISSIONS`, default `IsNotAnonymousUser` |
+| Throttle | `ScopedRateThrottle`, scope `translate_text`, `TEXT_THROTTLE` / `TEXT_ANON_THROTTLE` |
+
+Every bound on it exists for one reason: a cache miss spends real money on
+somebody's LLM budget.
+
+- **The guard is a seam, not a constant.** `TEXT_PERMISSIONS` is a list of
+  dotted DRF permission paths resolved per request (the shape stapel-geo's
+  `GEOCODER_PERMISSIONS` uses). A public storefront that wants a translate
+  button for logged-out readers sets `AllowAny`; a paid product tightens it to
+  its own plan gate. Neither needs a view subclass, and `permission_classes` on
+  a subclass still wins — the setting is the default, not a ceiling.
+- **Two throttles, not one.** `TEXT_THROTTLE` (`30/min`) and
+  `TEXT_ANON_THROTTLE` (`10/min`). The anonymous rate is dormant under the
+  default permission and is the *only* brake the moment the endpoint is opened
+  — which is exactly when nobody remembers to add one, so it ships now.
+- **Ceilings with their own codes.** `TEXT_MAX_CHARS` (5000, per text),
+  `TEXT_BATCH_MAX_ITEMS` (50) and `TEXT_BATCH_MAX_CHARS` (20000) each refuse
+  with a distinct `error.400.translate.*` code carrying the limit it enforced,
+  so a client can offer to trim rather than blindly retry.
+- **A batch of short strings in one call.** `{"texts": [...]}` translates a
+  screen's worth of UI copy together, which also keeps its tone consistent.
+- **A cache, keyed by a digest.** `TEXT_CACHE_TTL` (30 days) over the Django
+  cache, keyed by a sha256 of (source, target, context hint, text) — a digest
+  because a description contains spaces and memcached rejects those in a key.
+  A partially cached batch asks the provider only for the misses; `cached` is
+  true only when nothing was fetched.
+- **Same language in and out costs nothing.** Answered from the input with no
+  provider call: a translate button whose target happens to be the source must
+  not bill anybody.
+
+### Added — the generic half of the provider seam: `complete(prompt)`
+
+`BaseTranslationProvider` gains `complete(prompt) -> str`, `translate_text`,
+`translate_texts` and `parse_content_batch`. A provider that implements
+`complete` translates a whole batch in **one** upstream call: the content
+prompt asks for a JSON array and `parse_content_batch` validates the answer —
+parses as JSON, is a list, exactly the expected length, every item a non-empty
+string — before anything is zipped back onto the inputs. A misaligned array
+would hand a listing another listing's description, so a malformed answer falls
+back to one call per text; that costs more, it is never wrong.
+
+The three builtin providers implement it (the transport was already there; it
+is now split from the prompt). **A third-party provider implementing only the
+historical `translate(key, english_text, target_language, context)` contract
+keeps working unchanged** — one call per string, exercised by a test.
+
+### Added — this module's own error keys, with `ru`/`es` catalogs (TR-3)
+
+`errors.py` registers six `error.*.translate.*` codes through
+`register_service_errors`, and `translations/errors.{ru,es}.json` ship their
+translations, seeded from this repo's own builtin corpus. Before this every
+refusal in the module was an English literal in `{"error": "..."}` that no
+consumer could localize — a defect that reads worse here than anywhere else,
+since this is the module that holds everyone else's translations.
+
+The six strings are also in `fixtures/builtin/{lang}.json` for all twenty
+default languages (264 → 270 keys), where the whole fleet seeds from.
+
+### Added — the module emits its own contract triad (X-1 / TR-2)
+
+`make contract` now emits `docs/schema.json`, `docs/flows.json` (`[]` — no
+`@flow_step` here) and `docs/errors.json` from a single-module
+`{translate + core}` Django instance mounted at the canonical
+`/translate/api/v1/` prefix (`_codegen.py`, `_codegen_settings.py`,
+`codegen_urls.py`), plus `docs/llms.txt` and `README.md`. Until now the only
+way to obtain this module's OpenAPI was to filter stapel-example-monolith's
+unified schema — which made this repo's contract a property of a *different*
+repo's install list, and left a `gen:api` frontend pair with nothing to
+generate from wherever the module is mounted on its own.
+
+`tests/test_contract.py` grows from an `llms.txt`-only check into the full
+drift gate: determinism, `$ref` closure, canonical-prefix paths, and the
+schema's unauthenticated surface asserted as a whole set so a new endpoint
+cannot land with no declared auth without somebody naming it.
+
+### Fixed — `docs/capabilities.json` claimed 22 operations; the schema has 25
+
+The number was hand-maintained and stale. It is now derived from the emitted
+schema and gated by `test_capabilities_operations_total_matches_the_schema`, so
+it cannot drift again.
+
+### Notes
+
+- No migration: the cache is the Django cache, not a table.
+- `docs/llms.txt` budget raised 4000 → 6000 deliberately (the Makefile says
+  why): the growth is the surface, error and operation sections that only
+  became visible once this module started emitting its own triad.
+- Known, untouched: the two revision endpoints still return the same number
+  (TR-4), and `figma/translations/` collides with `figma/translations/{key}/`
+  on `operationId`, which drf-spectacular resolves with a numeral suffix.
+
 ## [0.6.1] — 2026-08-14
 
 ### Added — the three gdpr error keys the 2026-08-11 security wave introduced

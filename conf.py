@@ -103,6 +103,46 @@ translate_settings = AppSettings(
         # Agent-side provider name; empty = the agent's DEFAULT_PROVIDER
         # decides (previously hardcoded "claude-code").
         "AGENT_PROVIDER": "",
+        # -- Content translation endpoint (POST text/, see text.py) --------
+        # Permission classes of POST translate/api/v1/text/ (dotted paths,
+        # ALL must pass — DRF semantics). The default refuses anonymous
+        # callers: every miss on this endpoint spends somebody's LLM budget.
+        # A public storefront that wants a "translate this listing" button
+        # for logged-out readers opens it:
+        #   STAPEL_TRANSLATE = {"TEXT_PERMISSIONS": [
+        #       "rest_framework.permissions.AllowAny"]}
+        # and then TEXT_ANON_THROTTLE is what stands between the provider
+        # and a scraper. Tightening works the same way (a paid-plan gate,
+        # a workspace membership check) with no view subclass.
+        "TEXT_PERMISSIONS": [
+            "stapel_core.django.api.permissions.IsNotAnonymousUser"
+        ],
+        # DRF throttle rate for POST text/ (ScopedRateThrottle scope
+        # "translate_text"). PAYG discipline: a metered upstream must not be
+        # burnable at request speed.
+        "TEXT_THROTTLE": "30/min",
+        # Throttle applied to callers with no identity. Dormant under the
+        # default permission (anonymous is refused outright) and the only
+        # brake the moment TEXT_PERMISSIONS is opened up — so it ships with
+        # the library rather than being remembered later.
+        "TEXT_ANON_THROTTLE": "10/min",
+        # Length ceiling, per text, in characters. A refusal above it is
+        # `error.400.translate.text_too_long` — its own code, so a client can
+        # tell "too long" from every other 400 and offer to trim rather than
+        # retry. The bound exists because an LLM bills by token and a single
+        # pasted document is an unbounded bill.
+        "TEXT_MAX_CHARS": 5000,
+        # Batch bounds for the UI-copy form ({"texts": [...]}): how many
+        # strings one call may carry, and their combined length. Both have
+        # their own error code.
+        "TEXT_BATCH_MAX_ITEMS": 50,
+        "TEXT_BATCH_MAX_CHARS": 20000,
+        # How long a translated string is remembered (seconds, Django cache).
+        # The cache is keyed by (source, target, hint, text) digest, so the
+        # same listing description translated for a thousand readers is one
+        # provider call. 0 disables caching — every call reaches the
+        # provider, which is a cost decision, not a correctness one.
+        "TEXT_CACHE_TTL": 30 * 24 * 60 * 60,
         # -- Autofill bounds and authority (see autofill.py, tasks.py) -----
         # Hard cap on values filled in a single autofill run. Each one is an
         # LLM call, and an uncapped run walks the whole catalogue times

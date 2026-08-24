@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Ezt az e-mailt azért kapta, mert hozzájárult, hogy üzeneteket kapjon a következőtől: {company_name}.",
   "notification.footer.unsubscribe": "Leiratkozás",
-  "notification.footer.manage": "Értesítések kezelése"
+  "notification.footer.manage": "Értesítések kezelése",
+  "error.400.translate.text_required": "Adjon meg egy szöveget vagy egy nem üres szöveglistát",
+  "error.400.translate.text_too_long": "A szöveg hosszabb, mint {max_chars} karakter",
+  "error.400.translate.batch_too_large": "Egy köteg legfeljebb {max_items} szöveget tartalmazhat",
+  "error.400.translate.batch_too_long": "A köteg összesen több mint {max_chars} karaktert tartalmaz",
+  "error.400.translate.unsupported_language": "A(z) {language} nyelv itt nincs beállítva",
+  "error.502.translate.provider_unavailable": "A fordítási szolgáltatás nem érhető el"
 }

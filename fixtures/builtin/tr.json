@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Bu e-postayı, {company_name} tarafından gönderilen iletileri almayı kabul ettiğiniz için aldınız.",
   "notification.footer.unsubscribe": "Abonelikten çık",
-  "notification.footer.manage": "Bildirimleri yönet"
+  "notification.footer.manage": "Bildirimleri yönet",
+  "error.400.translate.text_required": "Bir metin ya da boş olmayan bir metin listesi belirtin",
+  "error.400.translate.text_too_long": "Metin {max_chars} karakterden uzun",
+  "error.400.translate.batch_too_large": "Bir grup en fazla {max_items} metin içerebilir",
+  "error.400.translate.batch_too_long": "Grup toplamda {max_chars} karakterden fazlasını içeriyor",
+  "error.400.translate.unsupported_language": "{language} dili burada yapılandırılmamış",
+  "error.502.translate.provider_unavailable": "Çeviri hizmeti kullanılamıyor"
 }

@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "קיבלתם אימייל זה מפני שהסכמתם לקבל הודעות מ-{company_name}.",
   "notification.footer.unsubscribe": "הסרה מרשימת התפוצה",
-  "notification.footer.manage": "ניהול התראות"
+  "notification.footer.manage": "ניהול התראות",
+  "error.400.translate.text_required": "יש לציין טקסט או רשימת טקסטים שאינה ריקה",
+  "error.400.translate.text_too_long": "הטקסט ארוך מ־{max_chars} תווים",
+  "error.400.translate.batch_too_large": "אצווה יכולה להכיל עד {max_items} טקסטים",
+  "error.400.translate.batch_too_long": "האצווה מכילה יותר מ־{max_chars} תווים בסך הכול",
+  "error.400.translate.unsupported_language": "השפה {language} אינה מוגדרת כאן",
+  "error.502.translate.provider_unavailable": "שירות התרגום אינו זמין"
 }

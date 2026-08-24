@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "لقد تلقيت هذه الرسالة لأنك وافقت على تلقّي رسائل من {company_name}.",
   "notification.footer.unsubscribe": "إلغاء الاشتراك",
-  "notification.footer.manage": "إدارة الإشعارات"
+  "notification.footer.manage": "إدارة الإشعارات",
+  "error.400.translate.text_required": "أدخل نصًا أو قائمة نصوص غير فارغة",
+  "error.400.translate.text_too_long": "النص أطول من {max_chars} حرفًا",
+  "error.400.translate.batch_too_large": "يمكن أن تحتوي الدفعة على {max_items} نص كحد أقصى",
+  "error.400.translate.batch_too_long": "تتجاوز الدفعة {max_chars} حرفًا في المجموع",
+  "error.400.translate.unsupported_language": "اللغة {language} غير مُعدّة هنا",
+  "error.502.translate.provider_unavailable": "خدمة الترجمة غير متاحة"
 }

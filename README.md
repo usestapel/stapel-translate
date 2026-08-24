@@ -24,17 +24,18 @@ pip install stapel-translate
 
 | Fact | Value |
 |---|---|
-| Version | `0.6.1` |
+| Version | `0.7.0` |
 | Python | `>=3.11` (3.11, 3.12, 3.13, 3.14) |
-| HTTP operations | 22 |
-| Config axes | 2 |
-| Usage surface | 24 |
-| Extension points | 4 |
+| HTTP operations | 25 |
+| Config axes | 5 |
+| Usage surface | 28 |
+| Extension points | 5 |
+| Error codes | 48 |
 | Fleet dependencies | [`stapel-agent`](https://github.com/usestapel/stapel-agent) (optional) · [`stapel-core`](https://github.com/usestapel/stapel-core) |
 
 ## Documentation
 
-[capabilities.json](https://github.com/usestapel/stapel-translate/blob/main/docs/capabilities.json) · [llms.txt (for agents)](https://github.com/usestapel/stapel-translate/blob/main/docs/llms.txt)
+[OpenAPI](https://github.com/usestapel/stapel-translate/blob/main/docs/schema.json) · [capabilities.json](https://github.com/usestapel/stapel-translate/blob/main/docs/capabilities.json) · [llms.txt (for agents)](https://github.com/usestapel/stapel-translate/blob/main/docs/llms.txt)
 
 ## Quick start
 

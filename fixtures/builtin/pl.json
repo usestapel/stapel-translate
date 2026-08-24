@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Otrzymujesz tę wiadomość, ponieważ zgodziłeś(-aś) się na otrzymywanie wiadomości od {company_name}.",
   "notification.footer.unsubscribe": "Wypisz się",
-  "notification.footer.manage": "Zarządzaj powiadomieniami"
+  "notification.footer.manage": "Zarządzaj powiadomieniami",
+  "error.400.translate.text_required": "Podaj tekst albo niepustą listę tekstów",
+  "error.400.translate.text_too_long": "Tekst jest dłuższy niż {max_chars} znaków",
+  "error.400.translate.batch_too_large": "Partia może zawierać najwyżej {max_items} tekstów",
+  "error.400.translate.batch_too_long": "Partia zawiera łącznie ponad {max_chars} znaków",
+  "error.400.translate.unsupported_language": "Język {language} nie jest tutaj skonfigurowany",
+  "error.502.translate.provider_unavailable": "Usługa tłumaczenia jest niedostępna"
 }

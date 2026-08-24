@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "このメールは、{company_name}からのお知らせの受信に同意されたお客様にお送りしています。",
   "notification.footer.unsubscribe": "配信停止",
-  "notification.footer.manage": "通知設定を管理"
+  "notification.footer.manage": "通知設定を管理",
+  "error.400.translate.text_required": "テキスト、または空でないテキストのリストを指定してください",
+  "error.400.translate.text_too_long": "テキストが {max_chars} 文字を超えています",
+  "error.400.translate.batch_too_large": "1 回のバッチで指定できるテキストは最大 {max_items} 件です",
+  "error.400.translate.batch_too_long": "バッチ全体の文字数が {max_chars} 文字を超えています",
+  "error.400.translate.unsupported_language": "言語 {language} はここでは設定されていません",
+  "error.502.translate.provider_unavailable": "翻訳サービスを利用できません"
 }

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from stapel_core.django.api.serializers import StapelDataclassSerializer
 
 from .conf import PUBLIC_ENTRY_FIELDS, translate_settings
-from .dto import LanguageRevisionResponse
+from .dto import LanguageRevisionResponse, TextTranslationResult
 from .models import TranslationEntry, TranslationValue
 
 
@@ -73,3 +73,61 @@ class TranslationEntrySerializer(serializers.ModelSerializer):
 class LanguageRevisionResponseSerializer(StapelDataclassSerializer):
     class Meta:
         dataclass = LanguageRevisionResponse
+
+
+class TextTranslationRequestSerializer(serializers.Serializer):
+    """Request body of ``POST translate/api/v1/text/``.
+
+    Two shapes over one endpoint: ``text`` for a single string (a listing
+    description a viewer wants to read), ``texts`` for a batch of short ones
+    (a screen's worth of UI copy, translated together so the tone matches).
+    Exactly one of them; the length ceilings live in ``text.check_bounds``
+    so both shapes are bounded by the same numbers and refuse with the same
+    error codes.
+    """
+
+    text = serializers.CharField(
+        required=False, allow_blank=True, trim_whitespace=False,
+        help_text="A single text to translate. Mutually exclusive with `texts`.",
+    )
+    texts = serializers.ListField(
+        required=False,
+        child=serializers.CharField(allow_blank=True, trim_whitespace=False),
+        help_text="Several short texts to translate in one call, order preserved. "
+                  "Mutually exclusive with `text`.",
+    )
+    target_lang = serializers.CharField(
+        help_text="Language code to translate into; must be a configured language.",
+    )
+    source_lang = serializers.CharField(
+        required=False, allow_blank=True,
+        help_text="Language code the texts are written in. Defaults to "
+                  "STAPEL_TRANSLATE['DEFAULT_LANGUAGE'].",
+    )
+    context = serializers.CharField(
+        required=False, allow_blank=True,
+        help_text="Free-text context/domain hint ('a car listing title', 'legal "
+                  "copy'). Rides into the prompt and is part of the cache key.",
+    )
+
+    def validate(self, attrs):
+        """One shape or the other — never both, never neither."""
+        has_text = "text" in attrs
+        has_texts = "texts" in attrs
+        if has_text == has_texts:
+            raise serializers.ValidationError(
+                {"text": "Provide exactly one of `text` or `texts`."}
+            )
+        return attrs
+
+    def to_texts(self):
+        """The validated payload as the list form both shapes reduce to."""
+        data = self.validated_data
+        if "texts" in data:
+            return list(data["texts"])
+        return [data["text"]]
+
+
+class TextTranslationResponseSerializer(StapelDataclassSerializer):
+    class Meta:
+        dataclass = TextTranslationResult

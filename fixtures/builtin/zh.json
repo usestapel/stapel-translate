@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "您收到这封邮件，是因为您同意接收来自 {company_name} 的消息。",
   "notification.footer.unsubscribe": "退订",
-  "notification.footer.manage": "管理通知"
+  "notification.footer.manage": "管理通知",
+  "error.400.translate.text_required": "请提供一段文本或一个非空的文本列表",
+  "error.400.translate.text_too_long": "文本长度超过 {max_chars} 个字符",
+  "error.400.translate.batch_too_large": "一批最多包含 {max_items} 段文本",
+  "error.400.translate.batch_too_long": "这一批文本总长度超过 {max_chars} 个字符",
+  "error.400.translate.unsupported_language": "此处未配置语言 {language}",
+  "error.502.translate.provider_unavailable": "翻译服务不可用"
 }

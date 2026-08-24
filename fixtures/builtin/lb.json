@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Dir kritt dës E-Mail, well Dir Iech domat averstane erkläert hutt, Noriichte vun {company_name} ze kréien.",
   "notification.footer.unsubscribe": "Ofmellen",
-  "notification.footer.manage": "Notifikatioune geréieren"
+  "notification.footer.manage": "Notifikatioune geréieren",
+  "error.400.translate.text_required": "Gitt entweder een Text oder eng net eidel Lëscht vun Texter un",
+  "error.400.translate.text_too_long": "Den Text ass méi laang wéi {max_chars} Zeechen",
+  "error.400.translate.batch_too_large": "E Stapel dierf héchstens {max_items} Texter enthalen",
+  "error.400.translate.batch_too_long": "De Stapel huet am Ganzen méi wéi {max_chars} Zeechen",
+  "error.400.translate.unsupported_language": "D'Sprooch {language} ass hei net konfiguréiert",
+  "error.502.translate.provider_unavailable": "Den Iwwersetzungsdéngscht ass net verfügbar"
 }

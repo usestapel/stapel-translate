@@ -10,7 +10,8 @@
     {"select": "functions", "path": "error_collector.py"},
     {"select": "functions", "path": "notification_collector.py"},
     {"select": "functions", "path": "conf.py"},
-    {"select": "functions", "path": "security.py"}
+    {"select": "functions", "path": "security.py"},
+    {"select": "functions", "path": "text.py"}
   ],
 
   "surface": {
@@ -123,6 +124,22 @@
     "get_default_language": {
       "kind": "gate_function",
       "intent": "The source/fallback language code (DEFAULT_LANGUAGE) — call this instead of hardcoding 'en' or reading translate_settings.DEFAULT_LANGUAGE directly; translate.resolve, autofill and the dashboard all derive their fallback from this single call."
+    },
+    "translate_texts": {
+      "kind": "gate_function",
+      "intent": "Translate arbitrary content — one string or a batch of short ones — through the configured LLM_PROVIDER, with the length ceilings, the language validation and the result cache already applied. This is what POST translate/api/v1/text/ runs; call it directly (a management command, a bulk backfill, a listing indexer) instead of reaching for get_llm_provider().translate(), which is the UI-string-KEY contract and applies none of the bounds. Raises TextTranslationRefused for anything the caller can fix."
+    },
+    "check_bounds": {
+      "kind": "gate_function",
+      "intent": "Apply TEXT_MAX_CHARS / TEXT_BATCH_MAX_ITEMS / TEXT_BATCH_MAX_CHARS to a list of texts, raising TextTranslationRefused with the code that says which ceiling was hit. Call this before queueing texts for translation in custom code so a caller learns the input is too long before anything is spent on it, rather than after."
+    },
+    "check_language": {
+      "kind": "gate_function",
+      "intent": "Validate a language code against the deployment's configured languages, raising TextTranslationRefused rather than passing an unknown tag to the provider. Use it instead of an `in get_supported_languages()` check when the refusal has to reach an API caller as a localizable code."
+    },
+    "cache_key": {
+      "kind": "gate_function",
+      "intent": "The Django cache key one translated string is stored under — a digest of (version, source, target, context hint, text), so it is memcached-safe where the text itself is not. Reach for this to warm the cache ahead of traffic or to invalidate a single translation; never rebuild the key by hand, because a mismatch is a silent second bill rather than an error."
     }
   }
 }

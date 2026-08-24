@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Hai ricevuto questa email perché hai accettato di ricevere messaggi da {company_name}.",
   "notification.footer.unsubscribe": "Annulla iscrizione",
-  "notification.footer.manage": "Gestisci notifiche"
+  "notification.footer.manage": "Gestisci notifiche",
+  "error.400.translate.text_required": "Indica un testo oppure un elenco di testi non vuoto",
+  "error.400.translate.text_too_long": "Il testo supera {max_chars} caratteri",
+  "error.400.translate.batch_too_large": "Un lotto può contenere al massimo {max_items} testi",
+  "error.400.translate.batch_too_long": "Il lotto supera {max_chars} caratteri in totale",
+  "error.400.translate.unsupported_language": "La lingua {language} non è configurata qui",
+  "error.502.translate.provider_unavailable": "Il servizio di traduzione non è disponibile"
 }

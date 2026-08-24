@@ -1,8 +1,8 @@
-# stapel-translate 0.6.1
+# stapel-translate 0.7.0
 
 AI-powered content translation: a TranslationEntry/TranslationValue store across a configurable language set, an LLM-routed translate.resolve comm Function with English-fallback, autofill/verification workflows, a staff dashboard (stats, per-language editing, LLM help, export/import, orphan cleanup), a Figma plugin API, and pluggable key collectors (backend error keys, notification templates, project-specific) so keys enter without any module importing another.
 
-Contract: axes 2 · surface 24 · extension points 4.
+Contract: axes 5 · surface 28 · extension points 5 · operations 25 · error codes 48.
 Generated from docs/capabilities.json by `stapel-llms-txt` — do not edit; drift-gated by `make contract-check`.
 
 ## Configuration axes — what a product switches on
@@ -11,6 +11,12 @@ Settings keys; `default` is what you get by saying nothing. Turning an axis off 
   Source/fallback language for translate.resolve and autofill (conf.py, MODULE.md Settings table).
 - LLM_PROVIDER [enum, default "stapel_translate.providers.AgentProvider"] — LLM backend for translation
   Which backend performs a single-string translation for translate/verify/autofill. Default routes to stapel-agent by HTTP; CommAgentProvider routes through the llm.complete comm Function instead (in-process in a monolith); OpenAICompatibleProvider talks to any OpenAI-compatible endpoint directly (conf.py, MODULE.md Settings table).
+- TEXT_CACHE_TTL [int, default 2592000] — How long translations are reused
+  How long a translated string is remembered (seconds), keyed by a digest of source, target, context hint and text — so the same listing description translated for a thousand readers is one provider call. 0 disables the cache: a cost decision, not a correctness one (conf.py, text.translate_texts).
+- TEXT_MAX_CHARS [int, default 5000] — Longest text that may be translated
+  Length ceiling per text on POST text/, in characters. Above it the endpoint answers error.400.translate.text_too_long — its own code, so a client can offer to trim rather than retry. The bound exists because an LLM bills by token and one pasted document is an unbounded bill (conf.py, text.check_bounds).
+- TEXT_PERMISSIONS [list, default ["stapel_core.django.api.permissions.IsNotAnonymousUser"]] — Who may translate content
+  Who may call POST translate/api/v1/text/ (dotted DRF permission paths, ALL must pass). The default refuses anonymous callers because every cache miss spends real money on an LLM budget; a public storefront that wants a translate button for logged-out readers sets AllowAny and leans on TEXT_ANON_THROTTLE, a paid product tightens it to its own plan gate. Either way it is settings, not a view subclass (conf.py, views.py TextTranslationView.get_permissions).
 
 ## Usage surface — call these before writing your own
 This is the answer to "does Stapel already have something for X?". `instead of` names the outside symbol this one displaces.
@@ -25,6 +31,12 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
   Fill missing (key, language) translation values via the configured LLM provider, writing verified=False and a TranslationHistory row per fill. This is the core logic behind the translate.autofill comm task and the autofill_translations command — call it directly instead of looping get_llm_provider().translate() yourself when triggering autofill from custom code (e.g. right after a new language is added). Every run is bounded: limit=None means the AUTOFILL_MAX_VALUES ceiling rather than the whole catalogue times every language, and a larger limit is clamped to it, so the returned stats carry the limit actually applied.
 - autofill_targets — stapel_translate.autofill.autofill_targets
   The configured languages eligible for autofill (every supported language except the source/default one, optionally narrowed to a caller-given subset). Use this instead of filtering get_supported_languages() yourself so a custom autofill trigger agrees with the built-in task/command on which languages are ever auto-translated.
+- cache_key — stapel_translate.text.cache_key
+  The Django cache key one translated string is stored under — a digest of (version, source, target, context hint, text), so it is memcached-safe where the text itself is not. Reach for this to warm the cache ahead of traffic or to invalidate a single translation; never rebuild the key by hand, because a mismatch is a silent second bill rather than an error.
+- check_bounds — stapel_translate.text.check_bounds
+  Apply TEXT_MAX_CHARS / TEXT_BATCH_MAX_ITEMS / TEXT_BATCH_MAX_CHARS to a list of texts, raising TextTranslationRefused with the code that says which ceiling was hit. Call this before queueing texts for translation in custom code so a caller learns the input is too long before anything is spent on it, rather than after.
+- check_language — stapel_translate.text.check_language
+  Validate a language code against the deployment's configured languages, raising TextTranslationRefused rather than passing an unknown tag to the provider. Use it instead of an `in get_supported_languages()` check when the refusal has to reach an API caller as a localizable code.
 - collect_error_keys_from_services — stapel_translate.error_collector.collect_error_keys_from_services
   Fan out to every registered service's error-keys endpoint (with per-service mount-point discovery) and upsert TranslationEntry rows tagged source='backend:errors', clearing stale refs first. This is what the 'errors' collector and the dashboard's key-collection button run — call it directly instead of writing your own peer-discovery loop over stapel_core.django.nav.get_services().
 - collect_notification_keys — stapel_translate.notification_collector.collect_notification_keys
@@ -55,6 +67,8 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 - safe_href — stapel_translate.security.safe_href
   instead of: django.utils.html.escape
   The URL if is_safe_href accepts it, else an empty string — the value to actually interpolate into an href. Reach for this rather than escaping or regex-stripping a URL yourself; an empty href is inert, a half-sanitised one is not. In templates use the |safe_href filter from {% load stapel_translate %}.
+- translate_texts — stapel_translate.text.translate_texts
+  Translate arbitrary content — one string or a batch of short ones — through the configured LLM_PROVIDER, with the length ceilings, the language validation and the result cache already applied. This is what POST translate/api/v1/text/ runs; call it directly (a management command, a bulk backfill, a listing indexer) instead of reaching for get_llm_provider().translate(), which is the UI-string-KEY contract and applies none of the bounds. Raises TextTranslationRefused for anything the caller can fix.
 - validate_figma_url — stapel_translate.security.validate_figma_url
   Return an HTTPS Figma-host URL unchanged, or raise UnsafeUrl. This is the write-boundary check every Figma ingestion endpoint runs before a ref reaches the database — call it in any custom endpoint that accepts a figma_url instead of trusting the plugin, so a poisoned ref is never stored for every other consumer to render.
 ### predicate
@@ -73,6 +87,8 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
   Register a translation-key collector (a zero-arg callable returning a stats dict) under a name — the fork-free way to make collect_translations and the dashboard's 'Collect keys' button pick up a project-specific key source, alongside the built-in errors/notifications collectors.
 
 ## Extension points — what a product replaces, fork-free
+- BaseTranslationProvider.complete [class_override]
+  The generic half of the LLM_PROVIDER seam: complete(prompt) -> str. A provider that implements it gets batch content translation in ONE upstream call (the content prompt asks for a JSON array and providers.parse_content_batch validates the shape before anything is zipped back onto the inputs); one that implements only the historical translate(key, english_text, target_language, context) keeps working, one call per string (providers.py, MODULE.md 'Content translation').
 - LLM_PROVIDER [dotted_path]
   Resolved via import_string in get_llm_provider(); contract: translate(key, english_text, target_language, context) -> str; subclass providers.BaseTranslationProvider to reuse prompt building (conf.py, MODULE.md 'Settings').
 - collectors [named_registry]
@@ -85,3 +101,85 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 ## Fits with — fleet dependencies
 - stapel-agent (optional) — default LLM_PROVIDER (AgentProvider) calls stapel-agent over HTTP (AGENT_SERVICE_URL) or via the llm.complete comm Function (CommAgentProvider); no direct Python import either way (conf.py AGENT_SERVICE_URL, MODULE.md Settings table)
 - stapel-core (required) — comm bus (translate.resolve Function, translations.changed emit, task_handler), RevisionMixin, access categories, error registry (pyproject.toml dependency)
+
+## HTTP operations (25) — call by operationId, never by a typed path
+Paths are relative to `/translate/api/v1/`.
+### Figma Plugin
+- GET /figma/auth/ — translate_api_v1_figma_auth_retrieve
+- POST /figma/translations/ — translate_api_v1_figma_translations_create
+- POST /figma/translations/remove-ref/ — translate_api_v1_figma_translations_remove_ref_create
+- GET /figma/translations/ — translate_api_v1_figma_translations_retrieve
+- GET /figma/translations/{key}/ — translate_api_v1_figma_translations_retrieve_2
+- POST /figma/translations/screenshot/ — translate_api_v1_figma_translations_screenshot_create
+- POST /figma/translations/search/ — translate_api_v1_figma_translations_search_create
+- POST /figma/translations/sync/ — translate_api_v1_figma_translations_sync_create
+### Translations
+- GET /languages/{lang}/data/ — translate_api_v1_languages_data_retrieve
+- GET /languages/revision/ — translate_api_v1_languages_revision_retrieve
+- POST /text/ — translate_api_v1_text_create
+- POST /translations/bulk_update/ — translate_api_v1_translations_bulk_update_create
+- GET /translations/data.json/ — translate_api_v1_translations_data.json_list
+- GET /translations/ — translate_api_v1_translations_list
+- GET /translations/{id}/ — translate_api_v1_translations_retrieve
+- GET /translations/revision/ — translate_api_v1_translations_revision_retrieve
+### Translator Dashboard
+- GET /dashboard/languages/{lang}/ — translate_api_v1_dashboard_languages_list
+- POST /dashboard/llm-help/ — translate_api_v1_dashboard_llm_help_create
+- GET /dashboard/stats/ — translate_api_v1_dashboard_stats_retrieve
+- PATCH /dashboard/translations/{id}/comment/ — translate_api_v1_dashboard_translations_comment_partial_update
+- DELETE /dashboard/translations/{id}/ — translate_api_v1_dashboard_translations_destroy
+- GET /dashboard/translations/{id}/navigation/ — translate_api_v1_dashboard_translations_navigation_retrieve
+- PATCH /dashboard/translations/{id}/ — translate_api_v1_dashboard_translations_partial_update
+- GET /dashboard/translations/{id}/ — translate_api_v1_dashboard_translations_retrieve
+- POST /dashboard/translations/{id}/verify/ — translate_api_v1_dashboard_translations_verify_create
+
+## Error codes (48) — the StapelError envelope
+Render `t(code, params)`; branch UX on the remediation. Localized text lives in docs/errors.<lang>.md, not here.
+- error.400.bad_request [400] fix_input
+- error.400.captcha_invalid [400] retry
+- error.400.captcha_required [400] retry
+- error.400.expected_list [400] fix_input
+- error.400.field.blank [400] fix_input {field}
+- error.400.field.does_not_exist [400] fix_input {field}
+- error.400.field.invalid [400] fix_input {field}
+- error.400.field.invalid_choice [400] fix_input {field}
+- error.400.field.max_length [400] fix_input {field,max_length}
+- error.400.field.max_value [400] fix_input {field,max_value}
+- error.400.field.min_length [400] fix_input {field,min_length}
+- error.400.field.min_value [400] fix_input {field,min_value}
+- error.400.field.null [400] fix_input {field}
+- error.400.field.required [400] fix_input {field}
+- error.400.field.unique [400] fix_input {field}
+- error.400.invalid_ad_id [400] fix_input
+- error.400.translate.batch_too_large [400] fix_input {max_items}
+- error.400.translate.batch_too_long [400] fix_input {max_chars}
+- error.400.translate.text_required [400] fix_input
+- error.400.translate.text_too_long [400] fix_input {max_chars}
+- error.400.translate.unsupported_language [400] fix_input {language}
+- error.400.validation_error [400] fix_input
+- error.400.verification_failed [400] verify
+- error.400.verification_invalid_factor [400] verify
+- error.401.unauthorized [401] reauthenticate
+- error.402.payment_required [402] retry
+- error.403.forbidden [403] retry
+- error.403.network_blocked [403] contact_support
+- error.403.verification_enrollment_required [403] verify
+- error.403.verification_required [403] verify
+- error.404.ad_not_found [404] retry
+- error.404.not_found [404] retry
+- error.404.verification_challenge_not_found [404] verify
+- error.405.method_not_allowed [405] retry
+- error.406.not_acceptable [406] retry
+- error.408.request_timeout [408] retry
+- error.409.conflict [409] fix_input
+- error.410.gone [410] retry
+- error.413.payload_too_large [413] retry
+- error.415.unsupported_media_type [415] retry
+- error.422.unprocessable_entity [422] wait_and_retry
+- error.423.locked [423] wait_and_retry
+- error.423.verification_locked [423] wait_and_retry
+- error.429.rate_limit [429] wait_and_retry {retry_after_minutes}
+- error.429.too_many_requests [429] wait_and_retry
+- error.500.internal [500] contact_support
+- error.502.translate.provider_unavailable [502] retry
+- error.503.mandate_unavailable [503] retry

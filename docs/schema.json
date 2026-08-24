@@ -1,0 +1,2558 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": "0.0.0"
+  },
+  "paths": {
+    "/translate/api/v1/dashboard/languages/{lang}/": {
+      "get": {
+        "operationId": "translate_api_v1_dashboard_languages_list",
+        "description": "List translations for a specific language.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lang",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "de",
+                "en",
+                "es",
+                "fr",
+                "he",
+                "hi",
+                "hr",
+                "hu",
+                "it",
+                "ja",
+                "ko",
+                "lb",
+                "pl",
+                "pt",
+                "ru",
+                "sr",
+                "tr",
+                "uk",
+                "zh"
+              ]
+            },
+            "description": "Language code",
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "no_refs",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Filter translations with empty refs"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search in key or value"
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by source"
+          },
+          {
+            "in": "query",
+            "name": "verified",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Filter by verification status (true/false)"
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TranslationList"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/dashboard/llm-help/": {
+      "post": {
+        "operationId": "translate_api_v1_dashboard_llm_help_create",
+        "description": "Get LLM translation suggestion for a specific language or all languages.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LLMHelpRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/LLMHelpRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/LLMHelpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LLMSingleTranslationResponse"
+                },
+                "examples": {
+                  "LLMSingleTranslationResponse": {
+                    "value": {
+                      "suggestion": "Speichern",
+                      "target_lang": "de",
+                      "source_context": {
+                        "en": "Save"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/dashboard/stats/": {
+      "get": {
+        "operationId": "translate_api_v1_dashboard_stats_retrieve",
+        "description": "Get translation statistics by language.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by source (e.g., \"catalog:features\")"
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardStatsResponse"
+                },
+                "examples": {
+                  "DashboardStatsResponse": {
+                    "value": {
+                      "total_entries": 350
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/dashboard/translations/{id}/": {
+      "get": {
+        "operationId": "translate_api_v1_dashboard_translations_retrieve",
+        "description": "Get translation detail with all languages.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationDetail"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "operationId": "translate_api_v1_dashboard_translations_partial_update",
+        "description": "Update a translation value for a specific language.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedTranslationUpdate"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedTranslationUpdate"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedTranslationUpdate"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationDetail"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "translate_api_v1_dashboard_translations_destroy",
+        "description": "Delete a translation (soft delete). Only for staff/superuser.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No response body"
+          }
+        }
+      }
+    },
+    "/translate/api/v1/dashboard/translations/{id}/comment/": {
+      "patch": {
+        "operationId": "translate_api_v1_dashboard_translations_comment_partial_update",
+        "description": "Update translator comment.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedTranslatorComment"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedTranslatorComment"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedTranslatorComment"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationDetail"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/dashboard/translations/{id}/navigation/": {
+      "get": {
+        "operationId": "translate_api_v1_dashboard_translations_navigation_retrieve",
+        "description": "Get prev/next translation IDs for navigation.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Language to filter unverified (optional)"
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by source"
+          },
+          {
+            "in": "query",
+            "name": "verified",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Filter by verification status"
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavigationResponse"
+                },
+                "examples": {
+                  "NavigationResponse": {
+                    "value": {
+                      "prev_id": 41,
+                      "next_id": 43
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/dashboard/translations/{id}/verify/": {
+      "post": {
+        "operationId": "translate_api_v1_dashboard_translations_verify_create",
+        "description": "Verify or unverify a translation.\n\n**Permissions:** `IsAuthorizedTranslator`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translator Dashboard"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationVerify"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationVerify"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationVerify"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationDetail"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/auth/": {
+      "get": {
+        "operationId": "translate_api_v1_figma_auth_retrieve",
+        "description": "Validate Figma API key and return supported languages.",
+        "tags": [
+          "Figma Plugin"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "languages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/translations/": {
+      "get": {
+        "operationId": "translate_api_v1_figma_translations_retrieve",
+        "description": "Get translations for Figma plugin. By default returns only figma-source translations.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "keys",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of specific keys to fetch"
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Language code (default: en)"
+          }
+        ],
+        "tags": [
+          "Figma Plugin"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "translations": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "language": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "translate_api_v1_figma_translations_create",
+        "description": "Create or update a translation entry from Figma.",
+        "tags": [
+          "Figma Plugin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaTranslationUpsertRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaTranslationUpsertRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaTranslationUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigmaTranslationUpsertResponse"
+                },
+                "examples": {
+                  "FigmaTranslationUpsertResponse": {
+                    "value": {
+                      "id": 42,
+                      "key": "common.save",
+                      "value": "Sauvegarder",
+                      "comment": "Save button label",
+                      "translator_comment": "Used in header",
+                      "refs": [
+                        "1:23",
+                        "4:56"
+                      ],
+                      "order": 10,
+                      "created": true
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigmaTranslationUpsertResponse"
+                },
+                "examples": {
+                  "FigmaTranslationUpsertResponse": {
+                    "value": {
+                      "id": 42,
+                      "key": "common.save",
+                      "value": "Sauvegarder",
+                      "comment": "Save button label",
+                      "translator_comment": "Used in header",
+                      "refs": [
+                        "1:23",
+                        "4:56"
+                      ],
+                      "order": 10,
+                      "created": true
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/translations/{key}/": {
+      "get": {
+        "operationId": "translate_api_v1_figma_translations_retrieve_2",
+        "description": "Get translation by key with verification status.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Language code (default: en)"
+          }
+        ],
+        "tags": [
+          "Figma Plugin"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "comment": {
+                      "type": "string"
+                    },
+                    "translator_comment": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "verification_status": {
+                      "type": "object"
+                    },
+                    "all_translations": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/translations/remove-ref/": {
+      "post": {
+        "operationId": "translate_api_v1_figma_translations_remove_ref_create",
+        "description": "Remove a Figma URL ref from a translation entry by key.",
+        "tags": [
+          "Figma Plugin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaRemoveRefRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaRemoveRefRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaRemoveRefRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigmaRemoveRefResponse"
+                },
+                "examples": {
+                  "FigmaRemoveRefResponse": {
+                    "value": {
+                      "key": "common.save",
+                      "ref_removed": true,
+                      "refs": [
+                        "1:23"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/translations/screenshot/": {
+      "post": {
+        "operationId": "translate_api_v1_figma_translations_screenshot_create",
+        "description": "Upload a screenshot of the Figma screen where a translation key is used.",
+        "tags": [
+          "Figma Plugin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaScreenshotUploadRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaScreenshotUploadRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaScreenshotUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigmaScreenshotUploadResponse"
+                },
+                "examples": {
+                  "FigmaScreenshotUploadResponse": {
+                    "value": {
+                      "key": "common.save",
+                      "uploaded": true
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/translations/search/": {
+      "post": {
+        "operationId": "translate_api_v1_figma_translations_search_create",
+        "description": "Search for translation by exact English text match. If found, suggests linking.",
+        "tags": [
+          "Figma Plugin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaSearchRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaSearchRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigmaSearchResponse"
+                },
+                "examples": {
+                  "FigmaSearchResponse": {
+                    "value": {
+                      "found": true,
+                      "entry": {
+                        "id": 42,
+                        "key": "common.save"
+                      },
+                      "ref_added": true
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/figma/translations/sync/": {
+      "post": {
+        "operationId": "translate_api_v1_figma_translations_sync_create",
+        "description": "Bulk sync all Figma translatable nodes. Clears old figma refs then rebuilds.",
+        "tags": [
+          "Figma Plugin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaSyncRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaSyncRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FigmaSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FigmaSyncResponse"
+                },
+                "examples": {
+                  "FigmaSyncResponse": {
+                    "value": {
+                      "synced": 50,
+                      "created": 5,
+                      "updated": 12
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StapelError"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/languages/{lang}/data/": {
+      "get": {
+        "operationId": "translate_api_v1_languages_data_retrieve",
+        "description": "Get all translations for a specific language as a cacheable key-value dictionary.\n\nThe `revision` parameter is required for cache busting - clients should use the current\nmax revision from `/translations/revision` endpoint.\n\n**Supported languages:** en, ru, de, fr, es, it, pt\n\n**Response format:**\n```json\n{\n  \"category.electronics\": \"Electronics\",\n  \"feature.color\": \"Color\",\n  ...\n}\n```\n\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lang",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "de",
+                "en",
+                "es",
+                "fr",
+                "he",
+                "hi",
+                "hr",
+                "hu",
+                "it",
+                "ja",
+                "ko",
+                "lb",
+                "pl",
+                "pt",
+                "ru",
+                "sr",
+                "tr",
+                "uk",
+                "zh"
+              ]
+            },
+            "description": "Language code (en, ru, de, fr, es, it, pt)",
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "revision",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Current revision number (for cache busting). Get from /translations/revision endpoint.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translations"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/languages/revision/": {
+      "get": {
+        "operationId": "translate_api_v1_languages_revision_retrieve",
+        "description": "Get the current maximum revision number for translations.\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "tags": [
+          "Translations"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LanguageRevisionResponse"
+                },
+                "examples": {
+                  "LanguageRevisionResponse": {
+                    "value": {
+                      "revision": 42
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/text/": {
+      "post": {
+        "operationId": "translate_api_v1_text_create",
+        "description": "Translate a text — or a batch of short texts — into a configured language.\n\nSend **either** `text` (one string) **or** `texts` (a list, order preserved,\ntranslated in one provider call so a screen's copy keeps a consistent tone).\n`source_lang` defaults to the module's `DEFAULT_LANGUAGE`; `context` is a\nfree-text domain hint that rides into the prompt.\n\nBounded on purpose — every miss spends real money on an LLM budget:\n`TEXT_MAX_CHARS` per text (`error.400.translate.text_too_long`),\n`TEXT_BATCH_MAX_ITEMS` (`error.400.translate.batch_too_large`) and\n`TEXT_BATCH_MAX_CHARS` (`error.400.translate.batch_too_long`) per batch,\nthrottled under scope `translate_text`, and cached for `TEXT_CACHE_TTL`\nseconds under a digest of (source, target, context, text).\n\n`text` in the response is `texts[0]` — the single-text form's answer, and a\nconvenience for it.\n",
+        "summary": "Translate arbitrary text",
+        "tags": [
+          "Translations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextTranslationRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/TextTranslationRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/TextTranslationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextTranslationResult"
+                },
+                "examples": {
+                  "TextTranslationResult": {
+                    "value": {
+                      "texts": [
+                        "Hola"
+                      ],
+                      "text": "Hola",
+                      "source_language": "en",
+                      "target_language": "es",
+                      "provider": "AgentProvider"
+                    }
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/translations/": {
+      "get": {
+        "operationId": "translate_api_v1_translations_list",
+        "description": "List translations with revision-based pagination.\n\n**Sync flow:**\n1. Initial sync: Call without min_revision to get all translations\n2. Store `revisions.global_max` from response\n3. Subsequent syncs: Call with `min_revision={stored_max}` to get only changes\n\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_deleted",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "description": "Include soft-deleted items in response. Default: true"
+          },
+          {
+            "in": "query",
+            "name": "max_revision",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Return objects with revision less than or equal to this value (inclusive). Default: no limit"
+          },
+          {
+            "in": "query",
+            "name": "min_revision",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Return objects with revision greater than this value (exclusive). Omit for initial sync to get all items."
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number. Default: 1"
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Number of items per page. Default: 100, Max: 1000"
+          }
+        ],
+        "tags": [
+          "Translations"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTranslationEntryPublicList"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/translations/{id}/": {
+      "get": {
+        "operationId": "translate_api_v1_translations_retrieve",
+        "description": "Mixin for ViewSets working with RevisionMixin models.\n\nProvides:\n- Automatic revision-based filtering\n- OpenAPI documentation for revision query parameters\n- Optional filtering of soft-deleted items\n- /revision endpoint to get current max revision\n\nUsage:\n    class MyModelViewSet(RevisionViewSetMixin, viewsets.ModelViewSet):\n        queryset = MyModel.objects.all()\n        serializer_class = MyModelSerializer\n        pagination_class = RevisionPagination\n\nQuery parameters:\n- min_revision: Return objects with revision > min_revision (default: 0)\n- max_revision: Return objects with revision <= max_revision (default: None)\n- include_deleted: Include soft-deleted items (default: true)\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "A unique integer value identifying this Translation.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Translations"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationEntryPublic"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/translations/bulk_update/": {
+      "post": {
+        "operationId": "translate_api_v1_translations_bulk_update_create",
+        "description": "Bulk create or update translations. Provide an array of objects with a ``key`` and a ``values`` mapping: ``{\"key\": \"a.b\", \"values\": {\"en\": \"Hello\", \"de\": \"Hallo\"}}``.\n\n**Permissions:** `IsSuperUser`",
+        "tags": [
+          "Translations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TranslationEntry"
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TranslationEntry"
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TranslationEntry"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkUpdateResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/translations/data.json/": {
+      "get": {
+        "operationId": "translate_api_v1_translations_data.json_list",
+        "description": "Get all data as a cacheable JSON array.\n\nThe `revision` parameter is required for cache busting - clients should use the current\nmax revision from `/revision` endpoint. Response includes Cache-Control header for 30 days.\n\n**Usage:**\n1. Call `/revision` to get current max revision\n2. Call `/data.json?revision={max_revision}` to get all data\n3. Cache the response locally - it won't change until revision changes\n\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "revision",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Current revision number (for cache busting). Get from /revision endpoint.",
+            "required": true,
+            "examples": {
+              "CurrentRevision": {
+                "value": 1,
+                "summary": "Current revision",
+                "description": "Use the value from /revision endpoint"
+              }
+            }
+          }
+        ],
+        "tags": [
+          "Translations"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TranslationEntryPublic"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/translate/api/v1/translations/revision/": {
+      "get": {
+        "operationId": "translate_api_v1_translations_revision_retrieve",
+        "description": "Get the current maximum revision number for this resource.\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "tags": [
+          "Translations"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaxRevision"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BulkUpdateResponse": {
+        "type": "object",
+        "description": "Response for bulk create/update operations.",
+        "properties": {
+          "updated_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "List of created/updated object IDs"
+          }
+        },
+        "required": [
+          "updated_ids"
+        ]
+      },
+      "DashboardStatsResponse": {
+        "type": "object",
+        "description": "Dashboard translation statistics across all languages.",
+        "properties": {
+          "languages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LanguageStats"
+            },
+            "description": "Per-language statistics list"
+          },
+          "total_entries": {
+            "type": "integer",
+            "description": "Total translation entries",
+            "example": 350
+          }
+        },
+        "required": [
+          "languages",
+          "total_entries"
+        ]
+      },
+      "FigmaRemoveRefRequest": {
+        "type": "object",
+        "description": "Body for removing a Figma URL ref from a translation entry.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Translation key"
+          },
+          "figma_url": {
+            "type": "string",
+            "description": "Figma URL to remove from refs"
+          },
+          "screen_name": {
+            "type": "string",
+            "description": "Figma screen name to remove from comment"
+          }
+        },
+        "required": [
+          "figma_url",
+          "key"
+        ]
+      },
+      "FigmaRemoveRefResponse": {
+        "type": "object",
+        "description": "Figma ref removal result.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Translation key",
+            "example": "common.save"
+          },
+          "ref_removed": {
+            "type": "boolean",
+            "description": "Whether the ref was removed",
+            "example": true
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Remaining Figma refs after removal",
+            "example": [
+              "1:23"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "ref_removed",
+          "refs"
+        ]
+      },
+      "FigmaScreenshotUploadRequest": {
+        "type": "object",
+        "description": "Body for uploading a screen screenshot for a translation key.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Translation key",
+            "maxLength": 255
+          },
+          "image": {
+            "type": "string",
+            "description": "Base64-encoded image (png/jpeg/webp/gif). Rejected unless the decoded bytes are within SCREENSHOT_MAX_BYTES and really are one of those formats.",
+            "maxLength": 6990512
+          }
+        },
+        "required": [
+          "image",
+          "key"
+        ]
+      },
+      "FigmaScreenshotUploadResponse": {
+        "type": "object",
+        "description": "Screenshot upload result for a single key.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Translation key",
+            "example": "common.save"
+          },
+          "uploaded": {
+            "type": "boolean",
+            "description": "Whether the screenshot was saved",
+            "example": true
+          }
+        },
+        "required": [
+          "key",
+          "uploaded"
+        ]
+      },
+      "FigmaSearchRequest": {
+        "type": "object",
+        "description": "Body for searching a translation by exact English text.",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "English text to search for"
+          },
+          "figma_url": {
+            "type": "string",
+            "description": "Figma selection URL to add as ref if a match is found"
+          },
+          "screen_name": {
+            "type": "string",
+            "description": "Figma screen name appended to comment"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "FigmaSearchResponse": {
+        "type": "object",
+        "description": "Search for translation entry by text (Figma plugin).",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "description": "Whether a match was found",
+            "example": true
+          },
+          "entry": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true,
+            "description": "Matched translation entry object",
+            "example": {
+              "id": 42,
+              "key": "common.save"
+            }
+          },
+          "ref_added": {
+            "type": "boolean",
+            "description": "Whether a Figma ref was added to the entry",
+            "example": true
+          }
+        },
+        "required": [
+          "entry",
+          "found",
+          "ref_added"
+        ]
+      },
+      "FigmaSyncEntry": {
+        "type": "object",
+        "description": "A single Figma node in a bulk-sync payload.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Translation key"
+          },
+          "currentText": {
+            "type": "string",
+            "description": "Current text of the node"
+          },
+          "figmaUrl": {
+            "type": "string",
+            "description": "Figma node URL"
+          },
+          "containerName": {
+            "type": "string",
+            "description": "Screen/container name"
+          },
+          "order": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Ordering index"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
+      "FigmaSyncRequest": {
+        "type": "object",
+        "description": "Body for a bulk sync of Figma translatable nodes.",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FigmaSyncEntry"
+            },
+            "description": "Figma nodes to sync"
+          }
+        },
+        "required": [
+          "entries"
+        ]
+      },
+      "FigmaSyncResponse": {
+        "type": "object",
+        "description": "Figma bulk sync result.",
+        "properties": {
+          "synced": {
+            "type": "integer",
+            "description": "Total entries processed",
+            "example": 50
+          },
+          "created": {
+            "type": "integer",
+            "description": "New entries created",
+            "example": 5
+          },
+          "updated": {
+            "type": "integer",
+            "description": "Existing entries updated",
+            "example": 12
+          }
+        },
+        "required": [
+          "created",
+          "synced",
+          "updated"
+        ]
+      },
+      "FigmaTranslationUpsertRequest": {
+        "type": "object",
+        "description": "Body for creating/updating a translation entry from Figma.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Translation key"
+          },
+          "value": {
+            "type": "string",
+            "description": "Text value for the target language"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Context/comment for translators"
+          },
+          "figma_url": {
+            "type": "string",
+            "description": "Figma selection URL to add as ref"
+          },
+          "lang": {
+            "type": "string",
+            "description": "Language to save to (default: en)"
+          },
+          "verify": {
+            "type": "boolean",
+            "default": false,
+            "description": "Set verified flag for the language"
+          },
+          "force": {
+            "type": "boolean",
+            "default": false,
+            "description": "Override verified guard and save anyway"
+          },
+          "order": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Ordering index"
+          },
+          "author_email": {
+            "type": "string",
+            "nullable": true,
+            "description": "Author email recorded in translation history"
+          },
+          "author_name": {
+            "type": "string",
+            "description": "Author name recorded in history"
+          },
+          "screen_name": {
+            "type": "string",
+            "description": "Figma screen name appended to comment"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ]
+      },
+      "FigmaTranslationUpsertResponse": {
+        "type": "object",
+        "description": "Created or updated translation entry (Figma plugin).",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Entry database ID",
+            "example": 42
+          },
+          "key": {
+            "type": "string",
+            "description": "Translation key",
+            "example": "common.save"
+          },
+          "value": {
+            "type": "string",
+            "description": "Translation text",
+            "example": "Sauvegarder"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Admin comment",
+            "example": "Save button label"
+          },
+          "translator_comment": {
+            "type": "string",
+            "description": "Translator note",
+            "example": "Used in header"
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Figma node references",
+            "example": [
+              "1:23",
+              "4:56"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Sort order",
+            "example": 10
+          },
+          "created": {
+            "type": "boolean",
+            "description": "True if newly created",
+            "example": true
+          },
+          "updated": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "True if an existing entry was modified"
+          },
+          "verified": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Verification status after upsert"
+          }
+        },
+        "required": [
+          "comment",
+          "created",
+          "id",
+          "key",
+          "order",
+          "refs",
+          "translator_comment",
+          "value"
+        ]
+      },
+      "LLMHelpRequest": {
+        "type": "object",
+        "description": "Serializer for LLM translation help request.",
+        "properties": {
+          "translation_id": {
+            "type": "integer"
+          },
+          "target_lang": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "translate_all": {
+            "type": "boolean",
+            "default": false
+          },
+          "apply": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "translation_id"
+        ]
+      },
+      "LLMSingleTranslationResponse": {
+        "type": "object",
+        "description": "LLM translation suggestion for a single language.",
+        "properties": {
+          "suggestion": {
+            "type": "string",
+            "description": "Suggested translation text",
+            "example": "Speichern"
+          },
+          "applied": {
+            "type": "boolean",
+            "description": "Whether the suggestion was auto-applied"
+          },
+          "target_lang": {
+            "type": "string",
+            "description": "Target language code",
+            "example": "de"
+          },
+          "source_context": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Source texts used for context",
+            "example": {
+              "en": "Save"
+            }
+          }
+        },
+        "required": [
+          "applied",
+          "source_context",
+          "suggestion",
+          "target_lang"
+        ]
+      },
+      "LanguageRevisionResponse": {
+        "type": "object",
+        "description": "Current maximum revision number for translations.",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "Latest revision number",
+            "example": 42
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "LanguageStats": {
+        "type": "object",
+        "description": "Translation statistics for a single language.",
+        "properties": {
+          "lang": {
+            "type": "string",
+            "description": "ISO 639-1 language code",
+            "example": "fr"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable language name",
+            "example": "French"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total translation entries",
+            "example": 350
+          },
+          "verified": {
+            "type": "integer",
+            "description": "Verified entries count",
+            "example": 280
+          },
+          "unverified": {
+            "type": "integer",
+            "description": "Unverified entries count",
+            "example": 70
+          }
+        },
+        "required": [
+          "lang",
+          "name",
+          "total",
+          "unverified",
+          "verified"
+        ]
+      },
+      "LanguageTranslation": {
+        "type": "object",
+        "description": "Serializer for a single language translation.",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lang",
+          "value",
+          "verified"
+        ]
+      },
+      "MaxRevision": {
+        "type": "object",
+        "description": "Serializer for /revision endpoint response.",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "Current maximum revision number"
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "NavigationResponse": {
+        "type": "object",
+        "description": "Previous/next translation entry IDs for keyboard navigation.",
+        "properties": {
+          "prev_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Previous entry ID, null if at start",
+            "example": 41
+          },
+          "next_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Next entry ID, null if at end",
+            "example": 43
+          }
+        },
+        "required": [
+          "next_id",
+          "prev_id"
+        ]
+      },
+      "PaginatedTranslationEntryPublicList": {
+        "type": "object",
+        "required": [
+          "pagination",
+          "revisions",
+          "results"
+        ],
+        "properties": {
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer",
+                "description": "Current page number"
+              },
+              "page_size": {
+                "type": "integer",
+                "description": "Number of items per page"
+              },
+              "total_pages": {
+                "type": "integer",
+                "description": "Total number of pages"
+              },
+              "total_count": {
+                "type": "integer",
+                "description": "Total number of items"
+              },
+              "has_next": {
+                "type": "boolean",
+                "description": "Whether there is a next page"
+              },
+              "has_previous": {
+                "type": "boolean",
+                "description": "Whether there is a previous page"
+              }
+            },
+            "required": [
+              "page",
+              "page_size",
+              "total_pages",
+              "total_count",
+              "has_next",
+              "has_previous"
+            ]
+          },
+          "revisions": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Minimum revision in current response"
+              },
+              "max": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Maximum revision in current response"
+              },
+              "global_max": {
+                "type": "integer",
+                "description": "Global maximum revision in the table"
+              },
+              "deleted_ids": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "description": "IDs of soft-deleted items since min_revision"
+              }
+            },
+            "required": [
+              "min",
+              "max",
+              "global_max",
+              "deleted_ids"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranslationEntryPublic"
+            }
+          }
+        }
+      },
+      "PatchedTranslationUpdate": {
+        "type": "object",
+        "description": "Serializer for updating a translation.",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "PatchedTranslatorComment": {
+        "type": "object",
+        "description": "Serializer for updating translator comment.",
+        "properties": {
+          "translator_comment": {
+            "type": "string"
+          }
+        }
+      },
+      "StapelError": {
+        "type": "object",
+        "description": "Structured error returned by all Stapel API endpoints.",
+        "properties": {
+          "localizable_error": {
+            "type": "string",
+            "description": "Translation key for client-side localization",
+            "example": "error.404.not_found"
+          },
+          "error": {
+            "type": "string",
+            "description": "Human-readable fallback/debug message — not reliably English,"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Context values for template placeholders",
+            "example": {
+              "retry_after": 30
+            }
+          },
+          "error_language": {
+            "type": "string",
+            "description": "Active Django locale `error` was rendered in (e.g"
+          }
+        },
+        "required": [
+          "error",
+          "localizable_error"
+        ]
+      },
+      "TextTranslationRequest": {
+        "type": "object",
+        "description": "Request body of ``POST translate/api/v1/text/``.\n\nTwo shapes over one endpoint: ``text`` for a single string (a listing\ndescription a viewer wants to read), ``texts`` for a batch of short ones\n(a screen's worth of UI copy, translated together so the tone matches).\nExactly one of them; the length ceilings live in ``text.check_bounds``\nso both shapes are bounded by the same numbers and refuse with the same\nerror codes.",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "A single text to translate. Mutually exclusive with `texts`."
+          },
+          "texts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Several short texts to translate in one call, order preserved. Mutually exclusive with `text`."
+          },
+          "target_lang": {
+            "type": "string",
+            "description": "Language code to translate into; must be a configured language."
+          },
+          "source_lang": {
+            "type": "string",
+            "description": "Language code the texts are written in. Defaults to STAPEL_TRANSLATE['DEFAULT_LANGUAGE']."
+          },
+          "context": {
+            "type": "string",
+            "description": "Free-text context/domain hint ('a car listing title', 'legal copy'). Rides into the prompt and is part of the cache key."
+          }
+        },
+        "required": [
+          "target_lang"
+        ]
+      },
+      "TextTranslationResult": {
+        "type": "object",
+        "description": "Content translation of one text or a batch of them (POST text/).",
+        "properties": {
+          "texts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Translations, in the order the texts were given",
+            "example": [
+              "Hola"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "description": "First translation — the answer of the single-text form",
+            "example": "Hola"
+          },
+          "source_language": {
+            "type": "string",
+            "description": "Source language, as given or defaulted",
+            "example": "en"
+          },
+          "target_language": {
+            "type": "string",
+            "description": "Language the texts were translated into",
+            "example": "es"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Class name of the configured LLM provider",
+            "example": "AgentProvider"
+          },
+          "cached": {
+            "type": "boolean",
+            "description": "Whether every returned text came from the cache"
+          }
+        },
+        "required": [
+          "cached",
+          "provider",
+          "source_language",
+          "target_language",
+          "text",
+          "texts"
+        ]
+      },
+      "TranslationDetail": {
+        "type": "object",
+        "description": "Serializer for translation detail view with all languages.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "comment": {
+            "type": "string"
+          },
+          "translator_comment": {
+            "type": "string",
+            "description": "Notes from translator"
+          },
+          "refs": {
+            "description": "Admin URLs referencing this key"
+          },
+          "llm_translated": {
+            "type": "boolean",
+            "description": "Whether this translation was generated by LLM"
+          },
+          "translations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LanguageTranslation"
+            },
+            "readOnly": true
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "translations"
+        ]
+      },
+      "TranslationEntry": {
+        "type": "object",
+        "description": "The full authoring row — privileged callers only.\n\nKept explicit rather than ``'__all__'`` so that adding a model column is\na decision about which surface it lands on, not an automatic publish.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "revision": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranslationValue"
+            },
+            "readOnly": true
+          },
+          "comment": {
+            "type": "string"
+          },
+          "translator_comment": {
+            "type": "string",
+            "description": "Notes from translator"
+          },
+          "refs": {
+            "description": "Admin URLs referencing this key"
+          },
+          "screenshot": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "description": "Screenshot of Figma screen where this key is used"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "order": {
+            "type": "integer",
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "format": "int64",
+            "nullable": true
+          },
+          "llm_translated": {
+            "type": "boolean",
+            "description": "Whether this translation was generated by LLM"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "revision",
+          "values"
+        ]
+      },
+      "TranslationEntryPublic": {
+        "type": "object",
+        "description": "The entry as an unauthenticated UI-string consumer sees it.\n\nAn allowlist, not an exclusion list: a column added to\n``TranslationEntry`` tomorrow stays off this surface until somebody\nnames it here. The read endpoints are reachable anonymously\n(``ReadOnlyOrSuperUser`` passes every SAFE_METHOD), so everything a\nclient does not need to render a string is authoring metadata that\nwould otherwise be published — developer comments, Figma refs of\nunreleased designs, screenshot URLs, provenance flags.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "revision": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranslationValue"
+            },
+            "readOnly": true
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "revision",
+          "values"
+        ]
+      },
+      "TranslationList": {
+        "type": "object",
+        "description": "Serializer for translation list view.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "value": {
+            "type": "string",
+            "description": "Given the *incoming* primitive data, return the value for this field\nthat should be validated and transformed to a native value.",
+            "readOnly": true
+          },
+          "verified": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "comment": {
+            "type": "string"
+          },
+          "translator_comment": {
+            "type": "string",
+            "description": "Notes from translator"
+          },
+          "refs": {
+            "description": "Admin URLs referencing this key"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "value",
+          "verified"
+        ]
+      },
+      "TranslationValue": {
+        "type": "object",
+        "description": "A single stored per-language value row.",
+        "properties": {
+          "language": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "value": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "language"
+        ]
+      },
+      "TranslationVerify": {
+        "type": "object",
+        "description": "Serializer for verifying a translation.",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lang",
+          "verified"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "JWTCookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "stapel_jwt",
+        "description": "JWT token stored in cookie. Login via /auth/admin/ to get the cookie."
+      }
+    }
+  }
+}

@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "Примили сте овај имејл зато што сте пристали да примате поруке од {company_name}.",
   "notification.footer.unsubscribe": "Одјави се",
-  "notification.footer.manage": "Управљај обавештењима"
+  "notification.footer.manage": "Управљај обавештењима",
+  "error.400.translate.text_required": "Наведите текст или непразну листу текстова",
+  "error.400.translate.text_too_long": "Текст је дужи од {max_chars} знакова",
+  "error.400.translate.batch_too_large": "Група може да садржи највише {max_items} текстова",
+  "error.400.translate.batch_too_long": "Група укупно садржи више од {max_chars} знакова",
+  "error.400.translate.unsupported_language": "Језик {language} овде није подешен",
+  "error.502.translate.provider_unavailable": "Услуга превођења није доступна"
 }

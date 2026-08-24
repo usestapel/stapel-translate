@@ -262,5 +262,11 @@
   "notification.footer.address": "{company_address}",
   "notification.footer.consent": "{company_name}의 메시지 수신에 동의하셨기 때문에 이 이메일을 받으셨습니다.",
   "notification.footer.unsubscribe": "수신 거부",
-  "notification.footer.manage": "알림 설정 관리"
+  "notification.footer.manage": "알림 설정 관리",
+  "error.400.translate.text_required": "텍스트 또는 비어 있지 않은 텍스트 목록을 입력하세요",
+  "error.400.translate.text_too_long": "텍스트가 {max_chars}자를 초과합니다",
+  "error.400.translate.batch_too_large": "한 번에 최대 {max_items}개의 텍스트를 보낼 수 있습니다",
+  "error.400.translate.batch_too_long": "전체 텍스트 길이가 {max_chars}자를 초과합니다",
+  "error.400.translate.unsupported_language": "{language} 언어는 여기에서 설정되어 있지 않습니다",
+  "error.502.translate.provider_unavailable": "번역 서비스를 사용할 수 없습니다"
 }

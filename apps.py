@@ -12,6 +12,13 @@ class TranslateConfig(AppConfig):
         # what registers them.
         from . import checks  # noqa: F401
 
+        # This module's own error keys. It is the fleet's error-key
+        # collector, which never stopped it from being a producer: the
+        # content-translation endpoint refuses in `error.*.translate.*`
+        # codes, and they have to be in the registry before the runtime
+        # /error-keys/ view is asked for them.
+        from . import errors  # noqa: F401
+
         from stapel_core.gdpr import gdpr_registry
         from .gdpr import TranslateGDPRProvider
         gdpr_registry.register(TranslateGDPRProvider())
