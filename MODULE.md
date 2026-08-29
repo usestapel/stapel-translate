@@ -18,7 +18,7 @@ customizable **without forking** this repository.
 | Comm Function | `translate.resolve` — the main surface other modules call (schema: `schemas/functions/translate.resolve.json`) |
 | Comm task | `translate.autofill` — LLM autofill of missing values (`tasks.py`) |
 | Emits | `translations.changed` `{language, keys_changed}` (schema: `schemas/emits/translations.changed.json`), emitted from `TranslationValue.save()` when a value changes |
-| Consumes | `user.deleted` → GDPR erasure (`actions.py`; provider registered in `TranslateConfig.ready()`) |
+| Consumes | `user.deleted` → GDPR erasure (`actions.py`; provider registered in `TranslateConfig.ready()`); `user.merged` → declared **no-op** — nothing here is keyed by a user id (the two person-shaped columns, `AuthorizedTranslator.email` and `TranslationHistory.author_email`, are addressed by email, which the payload does not carry) |
 | HTTP API | `translate/api/v1/` (entries CRUD, per-language data + revision sync, `POST text/` content translation), `translate/api/v1/dashboard/`, `translate/api/v1/figma/`, `translate/admin/dashboard/` staff HTML pages (`urls.py`) |
 | Management commands | `collect_translations`, `dump_translations`, `load_builtin_translations`, `autofill_translations`, `translation_backlog` |
 | Fixtures | `fixtures/builtin/{lang}.json` — curated translations for Stapel's own keys, loaded with `source="stapel:builtin"` |

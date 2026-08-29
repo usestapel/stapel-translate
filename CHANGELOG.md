@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-08-30
+
+### Added — `user.merged` is answered, and the answer is "nothing moves here"
+
+stapel-core 0.52.1 makes an app that subscribes `user.deleted` and not
+`user.merged` a system-check ERROR (`stapel_core.lifecycle.E001`). The pair
+exists because the two events are opposites: a deletion erases a person's
+rows, a merge **re-parents** them to the account a guest was folded into on
+sign-in, and a module that only knows the first has a silent wrong answer for
+the second — the guest's rows keep pointing at an id that can no longer sign
+in, and no erasure is ever requested for them.
+
+This module's honest answer is that it holds nothing to move. Nothing here is
+partitioned by account: entries and values are keyed by `key`/`language`,
+`FigmaApiKey` by its own digest, and the two columns that name a person —
+`AuthorizedTranslator.email` and `TranslationHistory.author_email` — are
+addressed by **email**. The merge payload carries ids only, `from_user_id` is
+already gone from auth by the time the event lands, and a translator record is
+granted to a staff address an anonymous guest session never has.
+
+So `actions.handle_user_merged` is an explicit no-op with the reason written
+down, not an omission. `tests/test_user_merged.py` keeps it honest rather than
+decorative: it walks every model in the app and fails if a user-keyed column
+ever appears, checks the handler swallows a malformed `"not-a-uuid"` payload
+(a raise is a poison pill on an at-least-once bus), and asserts
+`check_lifecycle_pairs()` is empty. `schemas/consumes/user.merged.json` states
+the same contract for a reader outside the repo.
+
+No behaviour change for any existing caller.
+
 ## [0.7.0] — 2026-08-24
 
 ### Added — `POST /translate/api/v1/text/`, content translation (BACKEND-GAPS TR-1)
