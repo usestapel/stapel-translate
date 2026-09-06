@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-09-07
+
+### Added — the three `closure_token_*` keys stapel-gdpr 0.5.5 introduced
+
+`stapel-gdpr` 0.5.5 registers three new error keys for the closure-link
+lifecycle, and — same gap as 0.6.1 — `stapel-gdpr` ships no catalogs of its
+own, so every consumer rendering a localized error reference fell back to the
+English literal:
+
+| Key | English |
+| --- | --- |
+| `error.401.gdpr.closure_token_invalid` | This closure link is not valid. |
+| `error.401.gdpr.closure_token_expired` | The 30-day grace period has ended and this account can no longer be restored. |
+| `error.403.gdpr.closure_token_scope` | This closure link belongs to an earlier closure of this account. |
+
+All three are now in `fixtures/builtin/{lang}.json` for all 20 default
+languages, next to the ten `gdpr.*` errors already there — same provenance as
+the rest of the corpus (`source="stapel:builtin"`, `verified=True` on load).
+`ru` and `es` carry the exact strings from `stapel-gdpr/translations/errors.{ru,es}.json`
+so a seed regen over there changes nothing. The builtin catalog goes from 270
+to 273 keys.
+
+Strings only: no code, no schema and no migration changed.
+
 ## [0.7.1] — 2026-08-30
 
 ### Added — `user.merged` is answered, and the answer is "nothing moves here"
