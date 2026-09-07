@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.7.4] — 2026-09-07
+
+### Fixed — 0.7.3 never reached PyPI
+
+`publish.yml` runs its own test job, and that job did not install
+`stapel-gdpr`, so the hosted-owner gate 0.7.3 added failed there with
+`ModuleNotFoundError` — the gate did what it promises for a missing
+denominator, in the one workflow that had not been given one. Both workflows
+now install `stapel-gdpr>=0.5.5`, the published registry the corpus is
+measured against. Nothing else changed.
+
 ## [0.7.3] — 2026-09-07
 
 ### Added — the corpus is now gated against the registries it hosts
