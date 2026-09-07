@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 
+## [0.7.3] — 2026-09-07
+
+### Added — the corpus is now gated against the registries it hosts
+
+A host's error-catalog ratchet reported all eighteen `error.4xx.gdpr.*` keys
+as untranslated in `es` and `ru`. Measured before anything was written: the
+corpus already carries every one of them, in all 20 languages, and has since
+the ten of the 2026-08-11 wave plus 0.7.2's three `closure_token_*` keys —
+`export_cooldown`, `closure_already_pending`, `legal_hold`,
+`no_active_closure`, `closure_token_invalid`, `closure_token_expired`,
+`closure_token_scope`, `export_not_found`, `account_closed`,
+`download_expired`, `download_consumed`, `export_not_ready`,
+`closure_unavailable`, `unknown_subject_type`, `unknown_dsar_kind`,
+`erasure_forbidden`, `erasure_not_found`, `dsar_not_found`. `stapel-gdpr`
+0.5.5's wheel ships `translations/errors.{ru,es}.json` with the same eighteen,
+byte-equal to the corpus. No string changed in this release.
+
+What the ratchet saw is a discovery gap, not a translation gap:
+`stapel_core.i18n.load_app_catalogs` merges the catalogs of **INSTALLED_APPS**
+packages (plus `STAPEL_I18N["EXTRA_CATALOG_DIRS"]`), while stapel-gdpr's
+eighteen keys register on import as soon as `stapel_gdpr.client` is used as a
+library. A host that installs stapel-gdpr without listing it as an app gets
+the keys in its canon and none of the owner's catalogs in its merged view.
+Such a host adds the owner's package directory to the catalog search path:
+
+```python
+STAPEL_I18N = {"LOCALES": [...], "EXTRA_CATALOG_DIRS": [Path(stapel_gdpr.__file__).parent]}
+```
+
+The gate that lands with this release is the one 0.7.2 lacked.
+`tests/test_builtin_fixtures.py` compared every language against `en.json`
+only, so a key missing from `en.json` as well — the exact shape of the three
+`closure_token_*` keys, which stapel-gdpr 0.5.5 had to author on its own side
+as `origin: imported` — was invisible to it: the corpus was internally
+consistent and complete against nothing. `test_corpus_carries_every_key_of_hosted_owner`
+now divides by the owner's registry: for each package whose vocabulary this
+corpus hosts (`stapel_gdpr`, `stapel_translate`) it reads the `docs/errors.json`
+that package ships, takes the codes it owns, and requires each in every
+`fixtures/builtin/<lang>.json`. A missing package fails the test rather than
+skipping it, and CI installs `stapel-gdpr` for that reason. The next gdpr key
+goes red here the moment the published registry declares it.
+
+Test and CI only; no code, schema or migration changed.
+
 ## [0.7.2] — 2026-09-07
 
 ### Added — the three `closure_token_*` keys stapel-gdpr 0.5.5 introduced

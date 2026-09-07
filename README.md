@@ -24,7 +24,7 @@ pip install stapel-translate
 
 | Fact | Value |
 |---|---|
-| Version | `0.7.2` |
+| Version | `0.7.3` |
 | Python | `>=3.11` (3.11, 3.12, 3.13, 3.14) |
 | HTTP operations | 25 |
 | Config axes | 5 |

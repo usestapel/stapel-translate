@@ -81,3 +81,45 @@ def test_fixture_placeholders_match_english(lang, english):
         if value.count("{") != value.count("}") or value.count("{") != len(actual):
             problems.append(f"{key}: unbalanced braces in {value!r}")
     assert problems == [], f"{lang}.json: " + "; ".join(problems[:10])
+
+
+#: Packages whose error vocabulary this corpus HOSTS: every key they own must
+#: be present in every fixture language, because their own ``translations/``
+#: catalogs seed from here. Other packages translate their own keys and are
+#: not the corpus's to cover.
+HOSTED_OWNERS = ("stapel_gdpr", "stapel_translate")
+
+
+def owned_error_codes(package: str) -> list[str]:
+    """Codes *package* owns, read from the ``docs/errors.json`` it ships.
+
+    Raises when the package is not installed: a gate with no denominator
+    must fail, not skip.
+    """
+    import importlib.resources as resources
+
+    entries = json.loads(
+        (resources.files(package) / "docs" / "errors.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    return sorted(e["code"] for e in entries if e.get("owner") == package)
+
+
+@pytest.mark.parametrize("package", HOSTED_OWNERS)
+def test_corpus_carries_every_key_of_hosted_owner(package):
+    """Every key a hosted owner registers, in every default language.
+
+    The intra-corpus parity test above only compares each language against
+    ``en.json``; a key that is missing from ``en.json`` too is invisible to
+    it. This test divides by the owner's registry instead.
+    """
+    codes = owned_error_codes(package)
+    assert codes, f"{package} declares no owned error codes — wrong denominator"
+    problems = []
+    for lang in DEFAULT_LANGUAGES:
+        data = load_fixture(lang)
+        missing = [c for c in codes if not (data.get(c) or "").strip()]
+        if missing:
+            problems.append(f"{lang}: {missing}")
+    assert problems == [], f"{package} keys absent from the corpus: " + "; ".join(problems)

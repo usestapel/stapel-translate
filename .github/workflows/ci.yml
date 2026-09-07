@@ -37,7 +37,9 @@ jobs:
         run: python -c "import stapel_translate; print('import OK')"
 
       - name: Install test dependencies
-        run: pip install pytest pytest-django pytest-cov
+        # stapel-gdpr is a hosted owner of the builtin corpus: its docs/errors.json
+        # is the denominator of tests/test_builtin_fixtures.py's coverage gate.
+        run: pip install pytest pytest-django pytest-cov stapel-gdpr
 
       - name: Tests with coverage
         run: |
@@ -100,7 +102,9 @@ jobs:
         run: python -c "import stapel_translate; print('import OK')"
 
       - name: Install test dependencies
-        run: pip install pytest pytest-django pytest-cov
+        # stapel-gdpr is a hosted owner of the builtin corpus: its docs/errors.json
+        # is the denominator of tests/test_builtin_fixtures.py's coverage gate.
+        run: pip install pytest pytest-django pytest-cov stapel-gdpr
 
       - name: Tests with coverage
         run: |
