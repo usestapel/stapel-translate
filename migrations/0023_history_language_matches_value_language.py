@@ -34,7 +34,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("stapel_translate", "0022_allowed_languages_empty_means_none"),
+        ("translate", "0022_allowed_languages_empty_means_none"),
     ]
 
     operations = [
