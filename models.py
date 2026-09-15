@@ -223,7 +223,12 @@ class TranslationHistory(models.Model):
         on_delete=models.CASCADE,
         related_name='history'
     )
-    language = models.CharField(max_length=5)
+    # 10, matching TranslationValue.language — the two hold the same datum and
+    # every edit writes both. At 5 a configured code of six to ten characters
+    # (zh-Hant, sr-Latn, es-419) stored the value and then 500'd on the journal
+    # row in the same request, leaving the two tables disagreeing. checks.py
+    # refuses a configured language that does not fit both.
+    language = models.CharField(max_length=10)
     change_type = models.CharField(max_length=20, choices=CHANGE_TYPE_CHOICES)
     old_value = models.TextField(blank=True, null=True)
     new_value = models.TextField(blank=True, null=True)

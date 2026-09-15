@@ -138,3 +138,75 @@ class TestScreenshotVerificationFailsClosed:
         pytest.importorskip("PIL")
         assert check_screenshot_image_verification(None) == []
         assert decode_screenshot(PNG_1PX).format == "png"
+
+
+# ---------------------------------------------------------------------------
+# E001 — a language the module cannot journal
+# ---------------------------------------------------------------------------
+
+
+class TestEveryConfiguredLanguageFitsItsColumns:
+    """A language code is written to two columns, and they must agree.
+
+    `TranslationValue.language` is 10 and `TranslationHistory.language` was 5.
+    Every edit writes both, in that order, so a configured code of six to ten
+    characters stored the value and then raised StringDataRightTruncation on
+    the journal row — inside the same request. The caller saw a 500 for an
+    edit that had landed, and the two tables disagreed about whether it had.
+
+    Not client-triggerable: `LanguageCodeField` refuses anything outside
+    `STAPEL_TRANSLATE["LANGUAGES"]`. Operator-triggerable, which is why it
+    survived: it needs somebody to add a language, and then it breaks every
+    edit in that language and no others.
+    """
+
+    def test_a_long_code_is_reported_against_the_column_that_cannot_hold_it(self):
+        from stapel_translate.checks import (
+            E001_LANGUAGE_CODE_TOO_LONG,
+            check_configured_languages_fit_their_columns,
+        )
+
+        with override_settings(
+            STAPEL_TRANSLATE={"LANGUAGES": ["en", "a" * 40], "DEFAULT_LANGUAGE": "en"}
+        ):
+            findings = check_configured_languages_fit_their_columns(app_configs=None)
+
+        assert findings, "a 40-character language code was accepted"
+        assert all(f.id == E001_LANGUAGE_CODE_TOO_LONG for f in findings)
+        assert any("TranslationHistory.language" in str(f.msg) for f in findings)
+        assert any("TranslationValue.language" in str(f.msg) for f in findings)
+
+    def test_the_code_that_used_to_break_the_journal_now_fits(self):
+        """`zh-Hant` is 7: under the old 5-character history column it stored
+        the value and lost the journal row. The widths now match."""
+        from stapel_translate.checks import (
+            check_configured_languages_fit_their_columns,
+        )
+
+        with override_settings(
+            STAPEL_TRANSLATE={
+                "LANGUAGES": ["en", "zh-Hant", "sr-Latn", "es-419", "pt-BR"],
+                "DEFAULT_LANGUAGE": "en",
+            }
+        ):
+            assert check_configured_languages_fit_their_columns(app_configs=None) == []
+
+    def test_the_two_columns_hold_the_same_datum_at_the_same_width(self):
+        """Pinned as a RELATION, not as the number 10: widening one column and
+        not the other is the defect, and a test that restated 10 would pass
+        the day somebody widened only the value side."""
+        from stapel_translate.models import TranslationHistory, TranslationValue
+
+        value_limit = TranslationValue._meta.get_field("language").max_length
+        history_limit = TranslationHistory._meta.get_field("language").max_length
+        assert history_limit == value_limit, (
+            "TranslationHistory.language must hold every code "
+            "TranslationValue.language accepts — every edit writes both"
+        )
+
+    def test_the_default_configuration_is_clean(self):
+        from stapel_translate.checks import (
+            check_configured_languages_fit_their_columns,
+        )
+
+        assert check_configured_languages_fit_their_columns(app_configs=None) == []

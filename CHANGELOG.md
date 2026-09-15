@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-16
+
+### Fixed — a language the module accepted but could not journal
+
+`TranslationValue.language` is `max_length=10`. `TranslationHistory.language`
+was `max_length=5`. The two hold the same datum — the language code of one
+translation — and **every edit writes both, in that order**.
+
+So a deployment that configured a code of six to ten characters — `zh-Hant`,
+`sr-Latn`, `es-419` (`pt-BR` is five and fits, the next one along does not) —
+stored the value and then raised `StringDataRightTruncation` on the history
+row **inside the same request**. The caller saw a 500 for an edit that had in
+fact landed, and the two tables were left disagreeing about whether it had.
+Ten write sites, all of them.
+
+Not client-triggerable: `LanguageCodeField` refuses anything outside
+`STAPEL_TRANSLATE["LANGUAGES"]`, so a caller cannot invent a code. It is
+**operator**-triggerable, which is why it survived — it needs somebody to add
+a language, and then it breaks every edit in that language and no others.
+
+- `TranslationHistory.language` widened to 10 to match (migration `0023`,
+  expand-only: no rows rewritten, nothing existing can violate it).
+- **`stapel_translate.E001`** — a new system check that refuses at startup any
+  configured language that does not fit a column storing it, naming the code,
+  the column and its limit. An operator adding a language finds out when they
+  add it, which is the only moment the fix is cheap. The limits are read off
+  the fields, so a column change cannot leave the check behind.
+
+Found by `stapel-bounds-lint` (BND002). The linter could not see the
+membership guard — it lives inside the field's `to_internal_value` — and
+reported the write as unbounded. It was right that nothing at the write site
+proves the value fits, and following it up found a defect a pure length check
+would have missed: the bug was never the length of the input, it was two
+columns disagreeing about the same datum.
+
+The regression test pins the two widths as a **relation**, not as the number
+10 — a test restating 10 would pass the day somebody widened only the value
+side, which is exactly how this arose.
+
 ## [0.7.4] — 2026-09-07
 
 ### Fixed — 0.7.3 never reached PyPI

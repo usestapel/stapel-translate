@@ -2,15 +2,65 @@
 
 Policy (docs/library-standard.md §3.7): E-level for configuration the
 service cannot run with, W-level for a setup that runs but ships an
-exposure. Both findings here are the second kind — the module keeps
+exposure. The screenshot findings are the second kind — the module keeps
 working, and staying quiet about it is exactly how a default nobody chose
-survives into production.
+survives into production. E001 is the first kind: a language the module
+cannot journal is a language every edit in it fails on.
 """
 from django.core import checks
 
 W001_PUBLIC_SCREENSHOT_STORAGE = "stapel_translate.W001"
 W002_NO_IMAGE_VERIFICATION = "stapel_translate.W002"
 W003_UNVERIFIED_UPLOADS_ALLOWED = "stapel_translate.W003"
+E001_LANGUAGE_CODE_TOO_LONG = "stapel_translate.E001"
+
+
+@checks.register()
+def check_configured_languages_fit_their_columns(app_configs, **kwargs):
+    """E001: a configured language code longer than a column that stores it.
+
+    A language code is written to more than one column — the per-language
+    value row and the history row that journals every edit to it — and those
+    columns have to agree about how wide a code can be. They did not:
+    ``TranslationValue.language`` was 10 and ``TranslationHistory.language``
+    was 5, so adding ``zh-Hant`` to ``STAPEL_TRANSLATE["LANGUAGES"]`` stored
+    the value and then raised ``StringDataRightTruncation`` on the journal row
+    in the same request. The caller saw a 500 for an edit that had landed, and
+    the two tables disagreed about whether it had.
+
+    The widths now match (migration 0023), and this refuses at startup rather
+    than at the first edit — an operator adding a language finds out when they
+    add it, which is the only moment the fix is cheap. The limits are read off
+    the fields, so a column change cannot leave this check behind.
+    """
+    from .conf import SUPPORTED_LANGUAGES
+    from .models import TranslationHistory, TranslationValue
+
+    columns = [
+        (TranslationValue, "language"),
+        (TranslationHistory, "language"),
+    ]
+    findings = []
+    for code in list(SUPPORTED_LANGUAGES):
+        for model, field_name in columns:
+            limit = model._meta.get_field(field_name).max_length
+            if limit is not None and len(str(code)) > limit:
+                findings.append(
+                    checks.Error(
+                        f"STAPEL_TRANSLATE['LANGUAGES'] contains {code!r} "
+                        f"({len(str(code))} characters), which does not fit "
+                        f"{model.__name__}.{field_name} (max_length={limit}). "
+                        "Every edit in that language would store the value and "
+                        "then fail writing the row that journals it.",
+                        hint=(
+                            "Use a shorter code, or widen the column and "
+                            "migrate. Do not widen one of the two columns "
+                            "alone — they hold the same datum."
+                        ),
+                        id=E001_LANGUAGE_CODE_TOO_LONG,
+                    )
+                )
+    return findings
 
 
 @checks.register(checks.Tags.security)
