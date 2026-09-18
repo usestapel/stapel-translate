@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stapel-translate"
-version = "0.8.0"
+version = "0.8.1"
 description = "AI-powered content translation Django app for the Stapel framework"
 readme = "README.md"
 license = { text = "MIT" }
@@ -41,7 +41,7 @@ dependencies = [
     # is_staff, and the scope model is decorative. 0.24.0 makes the local
     # database authoritative by default; a service that genuinely consumes an
     # external identity source sets the flag and says so.
-    "stapel-core>=0.24.0,<1.0",
+    "stapel-core>=0.84.0,<1.0",
 ]
 
 [project.urls]

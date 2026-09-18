@@ -1480,25 +1480,7 @@
     "/translate/api/v1/translations/data.json/": {
       "get": {
         "operationId": "translate_api_v1_translations_data.json_list",
-        "description": "Get all data as a cacheable JSON array.\n\nThe `revision` parameter is required for cache busting - clients should use the current\nmax revision from `/revision` endpoint. Response includes Cache-Control header for 30 days.\n\n**Usage:**\n1. Call `/revision` to get current max revision\n2. Call `/data.json?revision={max_revision}` to get all data\n3. Cache the response locally - it won't change until revision changes\n\n\n**Permissions:** `ReadOnlyOrSuperUser`",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "revision",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Current revision number (for cache busting). Get from /revision endpoint.",
-            "required": true,
-            "examples": {
-              "CurrentRevision": {
-                "value": 1,
-                "summary": "Current revision",
-                "description": "Use the value from /revision endpoint"
-              }
-            }
-          }
-        ],
+        "description": "Return all items as a JSON array with long cache headers.\n\n**Permissions:** `ReadOnlyOrSuperUser`",
         "tags": [
           "Translations"
         ],
@@ -1560,10 +1542,17 @@
           "updated_ids": {
             "type": "array",
             "items": {
-              "type": "string",
-              "format": "uuid"
+              "oneOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              ]
             },
-            "description": "List of created/updated object IDs"
+            "description": "List of created/updated object IDs (each a pk: integer or uuid)"
           }
         },
         "required": [
@@ -2239,7 +2228,7 @@
           },
           "error_language": {
             "type": "string",
-            "description": "Active Django locale `error` was rendered in (e.g"
+            "description": "The language `error` is written in (e.g. 'en', 'ru'),"
           }
         },
         "required": [

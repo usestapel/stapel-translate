@@ -47,17 +47,15 @@ suite was already looking where its document describes.
 What it found on its first run — 24 of 24 operations driven, 25 declared
 (method, path, code) rows, 1 red:
 
-* ``POST /translate/api/v1/translations/bulk_update/`` declares
-  ``BulkUpdateResponse.updated_ids`` as an array of UUID STRINGS and answers
-  ``{"updated_ids": [1]}``. The claim is inherited — ``stapel_core``'s
+* ``POST /translate/api/v1/translations/bulk_update/`` declared
+  ``BulkUpdateResponse.updated_ids`` as an array of UUID STRINGS and answered
+  ``{"updated_ids": [1]}``. The claim was inherited — ``stapel_core``'s
   ``BulkUpdateResponseSerializer.updated_ids`` was
-  ``ListField(child=UUIDField())`` through 0.24.0, the version this
-  checkout's venv pins and the version the committed document was emitted
-  against — while the view appends ``obj.pk`` of a ``BigAutoField`` model
-  (``views.py:112``, ``TranslationEntryViewSet.bulk_update``). stapel-core
-  0.71.0 has since redeclared the field as a pk union, so the entry in
-  ``KNOWN_MISMATCHES`` clears itself when the pin moves and ``make contract``
-  is re-run; until then the committed contract is what clients generate from.
+  ``ListField(child=UUIDField())`` through 0.24.0 — while the view appends
+  ``obj.pk`` of a ``BigAutoField`` model (``views.py:112``,
+  ``TranslationEntryViewSet.bulk_update``). stapel-core 0.71.0 redeclared the
+  field as a pk union; the floor now names it, the document is emitted against
+  it, and the entry is deleted. ``KNOWN_MISMATCHES`` is empty.
 
 ``GET /translate/api/v1/translations/data.json/`` is the sibling of that
 finding and is CLEAN here: ``TranslationEntryViewSet`` hand-annotates
@@ -704,23 +702,7 @@ def _text_translation(call):
 #: An entry names the defect AND its owner, and ``strict=True`` turns a fixed
 #: one into a failure until the entry is deleted — so a finding can be neither
 #: forgotten nor quietly kept.
-KNOWN_MISMATCHES = {
-    ("POST", V1 + "/translations/bulk_update/"):
-        "the committed document declares BulkUpdateResponse.updated_ids as an "
-        "array of UUID STRINGS; the wire answers an array of INTEGERS "
-        "({'updated_ids': [1]}). The claim is inherited, not local: "
-        "stapel_core.django.openapi.schemas.BulkUpdateResponseSerializer "
-        "typed updated_ids as ListField(child=UUIDField()) through 0.24.0, "
-        "which is what this checkout's venv pins and what the committed "
-        "schema was emitted against, while "
-        "TranslationEntryViewSet.bulk_update (views.py:112) appends obj.pk of "
-        "a BigAutoField model. OWNER: stapel-translate's core pin — "
-        "stapel-core 0.71.0 already redeclared the field as a pk UNION "
-        "(PrimaryKeyValueField: integer or uuid string), so this entry clears "
-        "itself the moment the pin moves and `make contract` is re-run. Until "
-        "then the committed contract is the one clients generate from, and it "
-        "types them string[] and hands them numbers.",
-}
+KNOWN_MISMATCHES: dict[tuple[str, str], str] = {}
 
 
 def _recipe_for(table, method, path, code):
@@ -885,9 +867,6 @@ def _drive(table, method, path, code, body_schema, *, expect_rows):
     )
 
     body = response.json()
-    import os
-    if os.environ.get("WIRE_DUMP"):
-        print("DUMP", method, path, json.dumps(body)[:900])
     errors = sorted(_validator(body_schema).iter_errors(body), key=lambda e: list(e.path))
     assert not errors, (
         f"{method} {path} answers a body the contract does not describe:\n"

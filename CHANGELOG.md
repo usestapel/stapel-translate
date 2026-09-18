@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-09-18
+
+### The one inherited wire lie is closed
+
+`tests/test_contract_wire.py` drove `POST /translations/bulk_update/` against a
+document that declared `BulkUpdateResponse.updated_ids` as UUID strings while
+the view answers integer pks. The claim came from stapel-core, and 0.71.0
+redeclared the field as a pk union (integer or uuid string).
+
+The floor now names that core, the contract is re-emitted against 0.84.0, and
+the `KNOWN_MISMATCHES` entry is deleted — the dict is empty and every driven
+operation answers the body it declares.
+
+### Changed
+
+- **`stapel-core>=0.24.0` → `>=0.84.0`.** The emitted contract is the floor: on
+  an older core this wheel ships a document describing a body the views do not
+  send.
+- `docs/schema.json`, `docs/llms.txt`, `docs/capabilities.json` and `README.md`
+  re-emitted: `updated_ids` is an integer-or-uuid union, and `data.json` carries
+  the mixin's own description.
+
 ## [0.8.0] — 2026-09-16
 
 ### Fixed — a language the module accepted but could not journal
