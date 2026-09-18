@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-09-18
+
+### Fixed — the surface-containment gate could not run where a JSONField lives
+
+`test_manage_py_check_is_green` and `test_run_checks_reports_no_e004_at_all`
+run Django's whole check registry, and the model checks probe the backend for
+JSONField support — which opens a cursor. Without `django_db` pytest-django
+refuses the connection, so both tests were red wherever an installed app
+carries a JSONField, and the release gate refused a green library on it.
+
+Both are marked `django_db`; the assertions are unchanged.
+
 ## [0.8.1] — 2026-09-18
 
 ### The one inherited wire lie is closed

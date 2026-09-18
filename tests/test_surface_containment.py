@@ -12,6 +12,7 @@ surface); this test proves the real, installed URLconf is clean — no
 mocking of ``INSTALLED_APPS`` or the URL patterns, unlike stapel-core's own
 unit tests for this check which exercise a synthetic fixture.
 """
+import pytest
 from django.core.checks import run_checks
 from django.core.management import call_command
 from stapel_core.django.checks import E004_MODULE_OUTSIDE_CANON
@@ -28,15 +29,20 @@ def test_check_module_surface_containment_is_clean_for_real_urlconf():
     assert e004_findings == [], [f.msg for f in e004_findings]
 
 
+@pytest.mark.django_db
 def test_manage_py_check_is_green():
     """The literal ``manage.py check`` surface: ``call_command("check")``
     raises ``SystemCheckError`` if any registered check (any app, any tag)
     returns an Error. A regression that reintroduces a bare
     ``translate/<anything>`` mount fails this the same way CI's
-    ``manage.py check`` would on a real deployment."""
+    ``manage.py check`` would on a real deployment.
+
+    Marked ``django_db``: the model checks probe the backend for JSONField
+    support, which opens a cursor."""
     call_command("check")
 
 
+@pytest.mark.django_db
 def test_run_checks_reports_no_e004_at_all():
     """Belt-and-suspenders: inspect the full ``run_checks()`` result
     directly (not just "did check raise") so a future assertion can target
