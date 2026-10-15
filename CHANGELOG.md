@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.8.3] — 2026-10-15
+
+Patch: the module's router no longer owns the bare `v1/` path. It was a DRF
+`DefaultRouter`, whose API root view answered `<prefix>/api/v1/` and so
+captured the list/create route of any module mounted under the same prefix.
+It is a `SimpleRouter` now; the routes and their names are unchanged.
+
 ## [0.8.2] — 2026-09-18
 
 ### Fixed — the surface-containment gate could not run where a JSONField lives

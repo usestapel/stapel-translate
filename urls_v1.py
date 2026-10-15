@@ -1,5 +1,5 @@
 from django.urls import include, path
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 
 from stapel_translate.dashboard_views import (
     DashboardBulkDeleteOrphansView,
@@ -34,7 +34,7 @@ from stapel_translate.views import (
     TranslationEntryViewSet,
 )
 
-router = DefaultRouter()
+router = SimpleRouter()
 router.register(r'translations', TranslationEntryViewSet, basename='translation')
 
 # Public/API surface
