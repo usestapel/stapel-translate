@@ -30,13 +30,16 @@ class TranslateConfig(AppConfig):
         # service_dashboard=True is the explicit AS-4 §2 arbitration flag:
         # this is *the* dashboard for the translate service, so
         # current_dashboard_url() picks it directly instead of falling back
-        # to the URL_PREFIX-matching heuristic.
+        # to the URL_PREFIX-matching heuristic. url_name follows the host's
+        # mount (URL_PREFIX, an api/ include); url is the sibling-service
+        # fallback.
         from stapel_core.django.admin import register_nav_link
         register_nav_link(
             "translate.dashboard",
             section="dashboards",
             title="Translator Dashboard",
             url="/translate/admin/dashboard/",
+            url_name="dashboard-index",
             requires="staff",
             service_dashboard=True,
         )

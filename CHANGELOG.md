@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.8.4] — 2026-10-22
+
+Patch: the dashboard's admin-menu link follows the host's mount. It was
+registered as the literal `/translate/admin/dashboard/`, so a host that
+mounts the module under `URL_PREFIX` or inside an `api/` include rendered a
+link to a 404. It is registered with `url_name="dashboard-index"` (stapel-core
+0.92.4 reverses it against the host URLconf); the literal path stays the
+fallback for a split deployment. Floor `stapel-core>=0.92.4`.
+
 ## [0.8.3] — 2026-10-15
 
 Patch: the module's router no longer owns the bare `v1/` path. It was a DRF

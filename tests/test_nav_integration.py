@@ -25,10 +25,40 @@ class TestDashboardNavLink:
         link = links["translate.dashboard"]
         assert link.section == "dashboards"
         assert link.url == "/translate/admin/dashboard/"
+        assert link.url_name == "dashboard-index"
         assert link.requires == "staff"
         # Explicit AS-4 §2 arbitration flag — current_dashboard_url() picks
         # this link directly rather than the URL_PREFIX-matching fallback.
         assert link.service_dashboard is True
+
+
+class TestDashboardLinkFollowsTheHostMount:
+    """A host that mounts translate under a prefix and an ``api/`` include
+    gets a link to where the dashboard really is, not to /translate/…."""
+
+    @pytest.fixture
+    def prefixed_host(self, settings):
+        from django.urls import clear_url_caches
+
+        settings.ROOT_URLCONF = "stapel_translate.tests.nav_prefixed_host_urls"
+        clear_url_caches()
+        yield
+        clear_url_caches()
+
+    def test_the_link_is_reversed_against_the_host_urlconf(self, prefixed_host):
+        from django.urls import resolve
+        from stapel_core.django.nav import get_nav_links, link_url
+
+        (link,) = [ln for ln in get_nav_links() if ln.key == "translate.dashboard"]
+        url = link_url(link)
+        assert url == "/host/api/translate/admin/dashboard/"
+        assert resolve(url).url_name == "dashboard-index"
+
+    def test_no_unserved_nav_link_is_reported(self, prefixed_host):
+        from stapel_core.django.nav_checks import check_nav_links_resolve
+
+        assert [f for f in check_nav_links_resolve()
+                if "translate.dashboard" in f.msg] == []
 
 
 class TestTemplatesHaveNoHardcodedNav:
