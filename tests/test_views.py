@@ -205,15 +205,47 @@ class TestTranslationBulkUpdate:
 class TestLanguageDataView:
     """Tests for the per-language key-value data endpoint."""
 
+    @staticmethod
+    def _current_revision(api_client):
+        return api_client.get('/translate/api/v1/languages/revision/').data['revision']
+
     def test_language_data_dict_shape(self, api_client, sample_translations):
-        response = api_client.get('/translate/api/v1/languages/en/data/?revision=1')
+        rev = self._current_revision(api_client)
+        response = api_client.get(f'/translate/api/v1/languages/en/data/?revision={rev}')
         assert response.status_code == status.HTTP_200_OK
         assert response.data == {
             'test.key.0': 'English 0',
             'test.key.1': 'English 1',
             'test.key.2': 'English 2',
         }
-        assert response['Cache-Control'] == 'public, max-age=2592000'
+        # The URL names the body's own revision: pinning it is safe.
+        assert response['Cache-Control'] == 'public, max-age=2592000, immutable'
+        assert response['X-Translations-Revision'] == str(rev)
+
+    def test_an_edit_is_served_under_the_new_revision(self, api_client, sample_translations):
+        """The dict was cached under the language alone for 5 minutes, so the
+        refetch an edit triggers (new revision URL) got the old body — and a
+        30-day public header pinned it there."""
+        rev = self._current_revision(api_client)
+        first = api_client.get(f'/translate/api/v1/languages/en/data/?revision={rev}')
+        assert first.data['test.key.0'] == 'English 0'
+
+        sample_translations[0].set_value('en', 'Edited 0')
+        new_rev = self._current_revision(api_client)
+        assert new_rev > rev
+
+        fresh = api_client.get(f'/translate/api/v1/languages/en/data/?revision={new_rev}')
+        assert fresh.data['test.key.0'] == 'Edited 0'
+        assert fresh['Cache-Control'] == 'public, max-age=2592000, immutable'
+
+    def test_a_stale_revision_url_is_never_pinned(self, api_client, sample_translations):
+        rev = self._current_revision(api_client)
+        sample_translations[0].set_value('en', 'Edited 0')
+        stale = api_client.get(f'/translate/api/v1/languages/en/data/?revision={rev}')
+        assert stale.status_code == status.HTTP_200_OK
+        # Current body, but no cache may keep it under the old URL.
+        assert stale.data['test.key.0'] == 'Edited 0'
+        assert stale['Cache-Control'] == 'no-cache'
 
     def test_language_data_other_language(self, api_client, sample_translations):
         response = api_client.get('/translate/api/v1/languages/ru/data/?revision=1')

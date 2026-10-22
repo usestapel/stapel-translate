@@ -1089,7 +1089,7 @@
     "/translate/api/v1/languages/{lang}/data/": {
       "get": {
         "operationId": "translate_api_v1_languages_data_retrieve",
-        "description": "Get all translations for a specific language as a cacheable key-value dictionary.\n\nThe `revision` parameter is required for cache busting - clients should use the current\nmax revision from `/translations/revision` endpoint.\n\n**Supported languages:** en, ru, de, fr, es, it, pt\n\n**Response format:**\n```json\n{\n  \"category.electronics\": \"Electronics\",\n  \"feature.color\": \"Color\",\n  ...\n}\n```\n\n\n**Permissions:** `ReadOnlyOrSuperUser`",
+        "description": "Get all translations for a specific language as a cacheable key-value dictionary.\n\nThe `revision` parameter is required for cache busting - clients should use the current\nmax revision from `/translations/revision` endpoint. The body is always the current one;\nit is served `public, max-age=2592000, immutable` only when `revision` equals the current\nrevision (echoed in `X-Translations-Revision`), and `no-cache` otherwise.\n\n**Supported languages:** en, ru, de, fr, es, it, pt\n\n**Response format:**\n```json\n{\n  \"category.electronics\": \"Electronics\",\n  \"feature.color\": \"Color\",\n  ...\n}\n```\n\n\n**Permissions:** `ReadOnlyOrSuperUser`",
         "parameters": [
           {
             "in": "path",

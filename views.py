@@ -128,7 +128,9 @@ class LanguageDataView(APIView):
         description="""Get all translations for a specific language as a cacheable key-value dictionary.
 
 The `revision` parameter is required for cache busting - clients should use the current
-max revision from `/translations/revision` endpoint.
+max revision from `/translations/revision` endpoint. The body is always the current one;
+it is served `public, max-age=2592000, immutable` only when `revision` equals the current
+revision (echoed in `X-Translations-Revision`), and `no-cache` otherwise.
 
 **Supported languages:** en, ru, de, fr, es, it, pt
 
@@ -183,12 +185,15 @@ max revision from `/translations/revision` endpoint.
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Try to get from Redis cache
-        cache_key = f"translations_lang_{lang}"
+        # The body is keyed by the revision it was built at, so an edit (which
+        # bumps the revision) can never be answered from the old dict.
+        current = (
+            TranslationEntry.objects.aggregate(max_rev=Max("revision"))["max_rev"] or 0
+        )
+        cache_key = f"translations_lang_{lang}_r{current}"
         cached_data = cache.get(cache_key)
 
         if cached_data is None:
-            # Build key-value dict for this language
             cached_data = dict(
                 TranslationValue.objects.filter(
                     entry__deleted=False, language=lang
@@ -196,12 +201,17 @@ max revision from `/translations/revision` endpoint.
                 .exclude(value="")
                 .values_list("entry__key", "value")
             )
-
-            # Cache in Redis for 5 minutes
             cache.set(cache_key, cached_data, timeout=300)
 
         response = Response(cached_data)
-        response["Cache-Control"] = "public, max-age=2592000"  # 30 days
+        response["X-Translations-Revision"] = str(current)
+        if revision_param == str(current):
+            # The URL names the revision this body is: safe to pin for 30 days.
+            response["Cache-Control"] = "public, max-age=2592000, immutable"
+        else:
+            # A stale (or future) revision URL gets the current body, and no
+            # cache may keep it under that URL.
+            response["Cache-Control"] = "no-cache"
         return response
 
 

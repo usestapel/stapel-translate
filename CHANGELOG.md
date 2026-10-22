@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.8.5] — 2026-10-22
+
+### Fixed — an edited translation is served under its new revision
+
+`GET /languages/<lang>/data/?revision=N` cached the dict under the language
+alone for five minutes and answered `Cache-Control: public, max-age=2592000`
+whatever `N` was, so the refetch an edit triggers got the old body and every
+browser and CDN pinned it under the new revision URL for 30 days. The body is
+now cached per current revision, the current revision is echoed in
+`X-Translations-Revision`, and the long `public, max-age=2592000, immutable`
+header is sent only when `N` is the current revision; any other `N` gets the
+current body with `no-cache`.
+
 ## [0.8.4] — 2026-10-22
 
 Patch: the dashboard's admin-menu link follows the host's mount. It was
