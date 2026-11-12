@@ -4,5 +4,6 @@
   "error.400.translate.text_required": "Indica un texto o una lista de textos no vacía",
   "error.400.translate.text_too_long": "El texto supera los {max_chars} caracteres",
   "error.400.translate.unsupported_language": "El idioma {language} no está configurado aquí",
-  "error.502.translate.provider_unavailable": "El servicio de traducción no está disponible"
+  "error.502.translate.provider_unavailable": "El servicio de traducción no está disponible",
+  "error.503.translate.unavailable": "La traducción automática no está disponible aquí"
 }

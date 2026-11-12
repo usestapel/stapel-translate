@@ -39,13 +39,16 @@ from .errors import (
     ERR_400_TEXT_TOO_LONG,
     ERR_400_UNSUPPORTED_LANGUAGE,
 )
-from .providers import TranslationProviderError, get_llm_provider
+from .providers import TranslationProviderError, TranslationUnavailable, get_llm_provider
 
 logger = logging.getLogger(__name__)
 
 #: Cache key namespace. Bumped when the prompt or the response shape
 #: changes in a way that makes a stored answer wrong rather than merely old.
 CACHE_VERSION = "v1"
+
+#: Cache-key source of a batch whose source language the provider detects.
+AUTO_SOURCE = "auto"
 
 
 class TextTranslationRefused(Exception):
@@ -97,11 +100,31 @@ def check_bounds(texts: list[str]) -> list[str]:
     return texts
 
 
+def configured_provider():
+    """The configured provider, or :class:`TranslationUnavailable`.
+
+    An empty ``LLM_PROVIDER`` or a dotted path that does not import means
+    this deployment cannot translate content at all — a caller must be able
+    to tell that from a translation, so it is a typed error, never a
+    pass-through of the input.
+    """
+    if not translate_settings.LLM_PROVIDER:
+        raise TranslationUnavailable("not_configured")
+    try:
+        return get_llm_provider()
+    except (ImportError, AttributeError, TypeError, ValueError) as exc:
+        logger.error("translate: LLM_PROVIDER %r cannot be loaded: %s",
+                     translate_settings.LLM_PROVIDER, exc)
+        raise TranslationUnavailable("not_configured") from exc
+
+
 def translate_texts(
     texts,
     target_language: str,
     source_language: str | None = None,
     hint: str = "",
+    *,
+    detect_source: bool = False,
 ) -> TextTranslationResult:
     """Translate *texts* into *target_language* through the LLM provider seam.
 
@@ -111,23 +134,35 @@ def translate_texts(
     "legal copy") that rides into the prompt; it is part of the cache key,
     because two hints are two different answers.
 
-    Raises :class:`TextTranslationRefused` for anything the caller can fix
-    and :class:`~stapel_translate.providers.TranslationProviderError` when
-    the provider itself is unreachable.
+    ``detect_source=True`` with no ``source_language`` leaves the source to
+    the provider ("detect it yourself") instead of assuming
+    ``DEFAULT_LANGUAGE``; the cache keys such answers apart, and the
+    same-language shortcut does not apply because the source is unknown.
+
+    Raises :class:`TextTranslationRefused` for anything the caller can fix,
+    :class:`~stapel_translate.providers.TranslationUnavailable` when no
+    provider is configured, and
+    :class:`~stapel_translate.providers.TranslationProviderError` when the
+    provider itself fails.
     """
     texts = check_bounds([str(text) for text in texts])
     target_language = check_language(target_language)
-    source_language = check_language(source_language or get_default_language())
+    if source_language or not detect_source:
+        source_language = check_language(source_language or get_default_language())
+        cache_source = source_language
+    else:
+        source_language = None
+        cache_source = AUTO_SOURCE
     hint = (hint or "").strip()
 
-    provider = get_llm_provider()
+    provider = configured_provider()
     provider_name = type(provider).__name__
 
     # Same language in and out: the viewer's language already matches the
     # content's. Answering with the original is the correct translation and
     # costs nothing — a "translate" button whose target happens to be the
     # source must not bill anybody.
-    if source_language == target_language:
+    if source_language is not None and source_language == target_language:
         return TextTranslationResult(
             texts=list(texts),
             text=texts[0],
@@ -141,7 +176,7 @@ def translate_texts(
     results: list[str | None] = [None] * len(texts)
     pending: list[int] = []
     for index, text in enumerate(texts):
-        hit = cache.get(cache_key(text, source_language, target_language, hint)) if ttl else None
+        hit = cache.get(cache_key(text, cache_source, target_language, hint)) if ttl else None
         if isinstance(hit, str) and hit:
             results[index] = hit
         else:
@@ -163,7 +198,7 @@ def translate_texts(
             results[index] = value
             if ttl:
                 cache.set(
-                    cache_key(texts[index], source_language, target_language, hint),
+                    cache_key(texts[index], cache_source, target_language, hint),
                     value,
                     timeout=ttl,
                 )
@@ -172,7 +207,7 @@ def translate_texts(
     return TextTranslationResult(
         texts=final,
         text=final[0],
-        source_language=source_language,
+        source_language=source_language or "",
         target_language=target_language,
         provider=provider_name,
         cached=not pending,

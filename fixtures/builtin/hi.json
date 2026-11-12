@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "एक बैच में अधिकतम {max_items} पाठ हो सकते हैं",
   "error.400.translate.batch_too_long": "बैच में कुल मिलाकर {max_chars} से अधिक वर्ण हैं",
   "error.400.translate.unsupported_language": "भाषा {language} यहाँ कॉन्फ़िगर नहीं है",
-  "error.502.translate.provider_unavailable": "अनुवाद सेवा उपलब्ध नहीं है"
+  "error.502.translate.provider_unavailable": "अनुवाद सेवा उपलब्ध नहीं है",
+  "error.503.translate.unavailable": "मशीनी अनुवाद यहाँ उपलब्ध नहीं है"
 }

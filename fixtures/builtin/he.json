@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "אצווה יכולה להכיל עד {max_items} טקסטים",
   "error.400.translate.batch_too_long": "האצווה מכילה יותר מ־{max_chars} תווים בסך הכול",
   "error.400.translate.unsupported_language": "השפה {language} אינה מוגדרת כאן",
-  "error.502.translate.provider_unavailable": "שירות התרגום אינו זמין"
+  "error.502.translate.provider_unavailable": "שירות התרגום אינו זמין",
+  "error.503.translate.unavailable": "תרגום מכונה אינו זמין כאן"
 }

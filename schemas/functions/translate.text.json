@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "translate.text",
+  "description": "Translate a batch of plain content texts through the configured LLM provider (same facade, bounds and cache as POST text/). Returns {texts: [string]} of the same length and order; blank texts come back unchanged. source null lets the provider detect it. Refusals raise with a message starting with error.400.translate.{text_too_long,batch_too_large,batch_too_long,unsupported_language}; no provider configured or a failed provider raises error.503.translate.unavailable — never an untranslated copy.",
+  "type": "object",
+  "properties": {
+    "texts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Plain texts to translate; the answer keeps their order."
+    },
+    "source": {
+      "type": ["string", "null"],
+      "maxLength": 16,
+      "description": "Source language code; null lets the provider detect it."
+    },
+    "target": {
+      "type": "string",
+      "maxLength": 16,
+      "description": "Target language code (one of LANGUAGES)."
+    },
+    "format": {
+      "type": "string",
+      "enum": ["plain"],
+      "default": "plain",
+      "description": "Text format. Only plain text is supported."
+    }
+  },
+  "required": ["texts", "target"],
+  "additionalProperties": false,
+  "$defs": {
+    "result": {
+      "type": "object",
+      "properties": {
+        "texts": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["texts"],
+      "additionalProperties": false
+    }
+  }
+}

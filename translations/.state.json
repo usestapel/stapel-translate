@@ -23,6 +23,10 @@
     "error.502.translate.provider_unavailable": {
       "hash": "f7c80e4c8bca7eae",
       "origin": "seed:stapel-builtin"
+    },
+    "error.503.translate.unavailable": {
+      "hash": "27bd938f26ca7ee6",
+      "origin": "seed:stapel-builtin"
     }
   },
   "errors.ru": {
@@ -48,6 +52,10 @@
     },
     "error.502.translate.provider_unavailable": {
       "hash": "f7c80e4c8bca7eae",
+      "origin": "seed:stapel-builtin"
+    },
+    "error.503.translate.unavailable": {
+      "hash": "27bd938f26ca7ee6",
       "origin": "seed:stapel-builtin"
     }
   }

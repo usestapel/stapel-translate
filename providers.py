@@ -67,6 +67,22 @@ class TranslationProviderError(Exception):
     """Raised when a provider cannot produce a translation."""
 
 
+class TranslationUnavailable(TranslationProviderError):
+    """This deployment cannot translate content right now.
+
+    ``reason`` is ``"not_configured"`` (no ``LLM_PROVIDER``, or one that does
+    not load) or ``"provider_failed"`` (the provider was asked and failed).
+    The message starts with the error key, so a caller on the far side of a
+    Function transport — where only the message survives — can match it.
+    """
+
+    error_key = "error.503.translate.unavailable"  # errors.ERR_503_UNAVAILABLE
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(f"{self.error_key}: {reason}")
+
+
 class BaseTranslationProvider:
     """Interface for autofill translation providers."""
 

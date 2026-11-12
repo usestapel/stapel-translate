@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "1 回のバッチで指定できるテキストは最大 {max_items} 件です",
   "error.400.translate.batch_too_long": "バッチ全体の文字数が {max_chars} 文字を超えています",
   "error.400.translate.unsupported_language": "言語 {language} はここでは設定されていません",
-  "error.502.translate.provider_unavailable": "翻訳サービスを利用できません"
+  "error.502.translate.provider_unavailable": "翻訳サービスを利用できません",
+  "error.503.translate.unavailable": "ここでは機械翻訳を利用できません"
 }

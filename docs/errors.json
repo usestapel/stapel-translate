@@ -418,5 +418,13 @@
     "remediation": "retry",
     "en": "Cannot verify workspace mandate right now",
     "owner": "stapel_core"
+  },
+  {
+    "code": "error.503.translate.unavailable",
+    "status": 503,
+    "params": [],
+    "remediation": "retry",
+    "en": "Content translation is not available here",
+    "owner": "stapel_translate"
   }
 ]

@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "Un lote admite como máximo {max_items} textos",
   "error.400.translate.batch_too_long": "El lote supera los {max_chars} caracteres en total",
   "error.400.translate.unsupported_language": "El idioma {language} no está configurado aquí",
-  "error.502.translate.provider_unavailable": "El servicio de traducción no está disponible"
+  "error.502.translate.provider_unavailable": "El servicio de traducción no está disponible",
+  "error.503.translate.unavailable": "La traducción automática no está disponible aquí"
 }

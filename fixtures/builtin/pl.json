@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "Partia może zawierać najwyżej {max_items} tekstów",
   "error.400.translate.batch_too_long": "Partia zawiera łącznie ponad {max_chars} znaków",
   "error.400.translate.unsupported_language": "Język {language} nie jest tutaj skonfigurowany",
-  "error.502.translate.provider_unavailable": "Usługa tłumaczenia jest niedostępna"
+  "error.502.translate.provider_unavailable": "Usługa tłumaczenia jest niedostępna",
+  "error.503.translate.unavailable": "Tłumaczenie maszynowe nie jest tutaj dostępne"
 }

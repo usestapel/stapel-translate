@@ -20,6 +20,7 @@ ERR_400_BATCH_TOO_LARGE = "error.400.translate.batch_too_large"
 ERR_400_BATCH_TOO_LONG = "error.400.translate.batch_too_long"
 ERR_400_UNSUPPORTED_LANGUAGE = "error.400.translate.unsupported_language"
 ERR_502_PROVIDER_UNAVAILABLE = "error.502.translate.provider_unavailable"
+ERR_503_UNAVAILABLE = "error.503.translate.unavailable"
 
 STAPEL_TRANSLATE_ERRORS = {
     ERR_400_TEXT_REQUIRED: "Provide either a text or a non-empty list of texts",
@@ -28,6 +29,7 @@ STAPEL_TRANSLATE_ERRORS = {
     ERR_400_BATCH_TOO_LONG: "The batch holds more than {max_chars} characters in total",
     ERR_400_UNSUPPORTED_LANGUAGE: "Language {language} is not configured here",
     ERR_502_PROVIDER_UNAVAILABLE: "The translation provider is unavailable",
+    ERR_503_UNAVAILABLE: "Content translation is not available here",
 }
 
 STAPEL_TRANSLATE_REMEDIATION = {
@@ -37,6 +39,7 @@ STAPEL_TRANSLATE_REMEDIATION = {
     ERR_400_BATCH_TOO_LONG: "fix_input",
     ERR_400_UNSUPPORTED_LANGUAGE: "fix_input",
     ERR_502_PROVIDER_UNAVAILABLE: "retry",
+    ERR_503_UNAVAILABLE: "retry",
 }
 
 register_service_errors(
@@ -54,4 +57,5 @@ __all__ = [
     "ERR_400_BATCH_TOO_LONG",
     "ERR_400_UNSUPPORTED_LANGUAGE",
     "ERR_502_PROVIDER_UNAVAILABLE",
+    "ERR_503_UNAVAILABLE",
 ]

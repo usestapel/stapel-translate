@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "Egy köteg legfeljebb {max_items} szöveget tartalmazhat",
   "error.400.translate.batch_too_long": "A köteg összesen több mint {max_chars} karaktert tartalmaz",
   "error.400.translate.unsupported_language": "A(z) {language} nyelv itt nincs beállítva",
-  "error.502.translate.provider_unavailable": "A fordítási szolgáltatás nem érhető el"
+  "error.502.translate.provider_unavailable": "A fordítási szolgáltatás nem érhető el",
+  "error.503.translate.unavailable": "A gépi fordítás itt nem érhető el"
 }

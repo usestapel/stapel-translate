@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "В одному запиті дозволено щонайбільше {max_items} текстів",
   "error.400.translate.batch_too_long": "Загальна довжина текстів перевищує {max_chars} символів",
   "error.400.translate.unsupported_language": "Мова {language} тут не налаштована",
-  "error.502.translate.provider_unavailable": "Сервіс перекладу недоступний"
+  "error.502.translate.provider_unavailable": "Сервіс перекладу недоступний",
+  "error.503.translate.unavailable": "Машинний переклад тут недоступний"
 }

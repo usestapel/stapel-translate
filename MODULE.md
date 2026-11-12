@@ -16,6 +16,7 @@ customizable **without forking** this repository.
 |---|---|
 | Models | `TranslationEntry` (unique `key`, `source`, `comment`, `refs`, soft-delete via `RevisionMixin.deleted`), `TranslationValue` (row-per-language: `entry` FK, `language`, `value`, `verified`; unique on `(entry, language)`), `TranslationHistory`, `AuthorizedTranslator`, `FigmaApiKey` (hashed keys) |
 | Comm Function | `translate.resolve` — the main surface other modules call (schema: `schemas/functions/translate.resolve.json`) |
+| Comm Function | `translate.text` — content translation for other modules (schema: `schemas/functions/translate.text.json`) |
 | Comm task | `translate.autofill` — LLM autofill of missing values (`tasks.py`) |
 | Emits | `translations.changed` `{language, keys_changed}` (schema: `schemas/emits/translations.changed.json`), emitted from `TranslationValue.save()` when a value changes |
 | Consumes | `user.deleted` → GDPR erasure (`actions.py`; provider registered in `TranslateConfig.ready()`); `user.merged` → declared **no-op** — nothing here is keyed by a user id (the two person-shaped columns, `AuthorizedTranslator.email` and `TranslationHistory.author_email`, are addressed by email, which the payload does not carry) |
@@ -52,6 +53,8 @@ name → environment variable → default.
 | `TEXT_MAX_CHARS` | `5000` | Length ceiling **per text**. Above it: `400 error.400.translate.text_too_long` with `{max_chars}` — its own code, so a client can offer to trim instead of retrying |
 | `TEXT_BATCH_MAX_ITEMS` | `50` | Most texts one `{"texts": [...]}` call may carry → `error.400.translate.batch_too_large` |
 | `TEXT_BATCH_MAX_CHARS` | `20000` | Combined length of a batch → `error.400.translate.batch_too_long` |
+| `FUNCTION_MAX_ITEMS` | `2000` | Whole-request ceiling on texts in one `translate.text` call; above it the call is refused (`error.400.translate.batch_too_large`), never truncated |
+| `FUNCTION_MAX_CHARS` | `200000` | Whole-request ceiling on total characters in one `translate.text` call (`error.400.translate.batch_too_long`) |
 | `TEXT_CACHE_TTL` | `2592000` (30 days) | How long a translation is remembered in the Django cache, keyed by a digest of (source, target, context hint, text). `0` disables caching — a cost decision, not a correctness one |
 | `LLM_OPENAI_BASE_URL` | `"https://api.openai.com/v1"` | For `OpenAICompatibleProvider` |
 | `LLM_OPENAI_API_KEY` | `""` | For `OpenAICompatibleProvider` |
@@ -92,6 +95,22 @@ this package.
 | Fallback | Value for `(key, language)`, else the `DEFAULT_LANGUAGE` value |
 | Missing keys | **Omitted** from `values` — never returned as `null`; callers must handle absence |
 | Soft-deleted | Entries with `deleted=True` are never resolved |
+
+### Functions — `translate.text` (`functions.py`)
+
+Content translation for another module (a CMS copying a page into another
+locale, a listing indexer): text in, text out, by name —
+`call("translate.text", {"texts": [...], "source": "en", "target": "de"})`.
+
+| Aspect | Contract |
+|---|---|
+| Payload | `{"texts": [str] (min 1), "source": str \| null, "target": str, "format": "plain"}` — `texts` and `target` required, `format` defaults to `plain` (the only value), `additionalProperties: false` |
+| Returns | `{"texts": [str]}` — same length and order as the input; blank texts come back unchanged and cost nothing |
+| `source: null` | The provider detects the source language (cached apart from any explicit source); an explicit source equal to `target` answers the input with no provider call |
+| Facade | `text.translate_texts` — the `LLM_PROVIDER` seam, `TEXT_MAX_CHARS` per text, language validation against `LANGUAGES`, the per-text cache. No separate metering: the content path has none beyond the HTTP throttle, and a Function call is not an HTTP request |
+| Batching | Unique non-blank texts are split into provider calls of `TEXT_BATCH_MAX_ITEMS` / `TEXT_BATCH_MAX_CHARS` |
+| Refusals | `TextFunctionRefused` (a `ValueError`) whose message starts with `error.400.translate.{batch_too_large,batch_too_long,text_too_long,unsupported_language}` — above `FUNCTION_MAX_ITEMS` / `FUNCTION_MAX_CHARS` / `TEXT_MAX_CHARS`, never truncated |
+| Unavailable | `providers.TranslationUnavailable` (`reason`: `not_configured` — empty or unloadable `LLM_PROVIDER`; `provider_failed`), message starts with `error.503.translate.unavailable`. Never an untranslated copy. Through `call()` it arrives as `FunctionCallError` with the provider exception as `__cause__` in-process and the key in the message over every transport |
 
 Related comm surfaces: `start("translate.autofill", {"caller_service": "...",
 "languages": [...], "keys": [...], "limit": N})` — `caller_service` must be listed

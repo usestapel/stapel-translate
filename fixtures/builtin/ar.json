@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "يمكن أن تحتوي الدفعة على {max_items} نص كحد أقصى",
   "error.400.translate.batch_too_long": "تتجاوز الدفعة {max_chars} حرفًا في المجموع",
   "error.400.translate.unsupported_language": "اللغة {language} غير مُعدّة هنا",
-  "error.502.translate.provider_unavailable": "خدمة الترجمة غير متاحة"
+  "error.502.translate.provider_unavailable": "خدمة الترجمة غير متاحة",
+  "error.503.translate.unavailable": "الترجمة الآلية غير متاحة هنا"
 }

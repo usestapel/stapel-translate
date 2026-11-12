@@ -98,6 +98,11 @@
       "summary": "Provided Function: {keys, language} -> {values}, DEFAULT_LANGUAGE fallback, missing keys omitted (never null), soft-deleted entries never resolved (functions.py, MODULE.md 'Functions')."
     },
     {
+      "name": "translate.text",
+      "kind": "comm_function",
+      "summary": "Provided Function: {texts, source|null, target, format: plain} -> {texts}, same length and order, through the same LLM_PROVIDER facade, TEXT_MAX_CHARS bound and cache as POST text/; split into provider batches, refused (never truncated) above FUNCTION_MAX_ITEMS / FUNCTION_MAX_CHARS; no or failed provider raises error.503.translate.unavailable, never an untranslated copy (functions.py, MODULE.md 'Functions')."
+    },
+    {
       "name": "BaseTranslationProvider.complete",
       "kind": "class_override",
       "summary": "The generic half of the LLM_PROVIDER seam: complete(prompt) -> str. A provider that implements it gets batch content translation in ONE upstream call (the content prompt asks for a JSON array and providers.parse_content_batch validates the shape before anything is zipped back onto the inputs); one that implements only the historical translate(key, english_text, target_language, context) keeps working, one call per string (providers.py, MODULE.md 'Content translation')."
@@ -280,6 +285,12 @@
       "kind": "gate_function",
       "path": "stapel_translate.text.check_language",
       "intent": "Validate a language code against the deployment's configured languages, raising TextTranslationRefused rather than passing an unknown tag to the provider. Use it instead of an `in get_supported_languages()` check when the refusal has to reach an API caller as a localizable code."
+    },
+    {
+      "name": "configured_provider",
+      "kind": "gate_function",
+      "path": "stapel_translate.text.configured_provider",
+      "intent": "The configured LLM provider, or TranslationUnavailable('not_configured') when LLM_PROVIDER is empty or does not load. Call it instead of get_llm_provider() whenever the caller must tell \"this deployment cannot translate\" from a translation (the translate.text Function does)."
     },
     {
       "name": "translate_texts",

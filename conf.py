@@ -143,6 +143,12 @@ translate_settings = AppSettings(
         # provider call. 0 disables caching — every call reaches the
         # provider, which is a cost decision, not a correctness one.
         "TEXT_CACHE_TTL": 30 * 24 * 60 * 60,
+        # Whole-request bounds of the `translate.text` Function (another
+        # module's batch, e.g. every text leaf of a CMS page). It is split
+        # into provider calls of TEXT_BATCH_MAX_ITEMS / TEXT_BATCH_MAX_CHARS;
+        # above these two the request is refused, never truncated.
+        "FUNCTION_MAX_ITEMS": 2000,
+        "FUNCTION_MAX_CHARS": 200000,
         # -- Autofill bounds and authority (see autofill.py, tasks.py) -----
         # Hard cap on values filled in a single autofill run. Each one is an
         # LLM call, and an uncapped run walks the whole catalogue times

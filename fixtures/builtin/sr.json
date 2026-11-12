@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "Група може да садржи највише {max_items} текстова",
   "error.400.translate.batch_too_long": "Група укупно садржи више од {max_chars} знакова",
   "error.400.translate.unsupported_language": "Језик {language} овде није подешен",
-  "error.502.translate.provider_unavailable": "Услуга превођења није доступна"
+  "error.502.translate.provider_unavailable": "Услуга превођења није доступна",
+  "error.503.translate.unavailable": "Машинско превођење овде није доступно"
 }

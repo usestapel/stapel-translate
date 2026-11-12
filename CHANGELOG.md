@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+Proposed version: 0.9.0.
+
+### Added — `translate.text`, content translation as a comm Function
+
+`call("translate.text", {"texts", "source" | null, "target", "format": "plain"})`
+-> `{"texts"}` of the same length and order, through the same provider,
+bounds and cache as `POST text/`. A batch is split into provider calls of
+`TEXT_BATCH_MAX_ITEMS` / `TEXT_BATCH_MAX_CHARS` and bounded as a whole by
+the new `FUNCTION_MAX_ITEMS` (2000) / `FUNCTION_MAX_CHARS` (200000):
+above them it is refused, never truncated. `source: null` asks the provider
+to detect the language. No configured provider, or a failed one, raises
+`providers.TranslationUnavailable` (`error.503.translate.unavailable`), so a
+caller can tell "cannot translate here" from a translation.
+`text.translate_texts` gains `detect_source=`; `text.configured_provider()`
+is the typed provider lookup.
+
 ## [0.8.5] — 2026-10-22
 
 ### Fixed — an edited translation is served under its new revision

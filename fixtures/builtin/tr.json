@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "Bir grup en fazla {max_items} metin içerebilir",
   "error.400.translate.batch_too_long": "Grup toplamda {max_chars} karakterden fazlasını içeriyor",
   "error.400.translate.unsupported_language": "{language} dili burada yapılandırılmamış",
-  "error.502.translate.provider_unavailable": "Çeviri hizmeti kullanılamıyor"
+  "error.502.translate.provider_unavailable": "Çeviri hizmeti kullanılamıyor",
+  "error.503.translate.unavailable": "Makine çevirisi burada kullanılamıyor"
 }

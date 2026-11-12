@@ -28,9 +28,9 @@ pip install stapel-translate
 | Python | `>=3.11` (3.11, 3.12, 3.13, 3.14) |
 | HTTP operations | 25 |
 | Config axes | 5 |
-| Usage surface | 28 |
-| Extension points | 5 |
-| Error codes | 48 |
+| Usage surface | 29 |
+| Extension points | 6 |
+| Error codes | 49 |
 | Fleet dependencies | [`stapel-agent`](https://github.com/usestapel/stapel-agent) (optional) · [`stapel-core`](https://github.com/usestapel/stapel-core) |
 
 ## Documentation

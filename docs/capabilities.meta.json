@@ -129,6 +129,10 @@
       "kind": "gate_function",
       "intent": "Translate arbitrary content — one string or a batch of short ones — through the configured LLM_PROVIDER, with the length ceilings, the language validation and the result cache already applied. This is what POST translate/api/v1/text/ runs; call it directly (a management command, a bulk backfill, a listing indexer) instead of reaching for get_llm_provider().translate(), which is the UI-string-KEY contract and applies none of the bounds. Raises TextTranslationRefused for anything the caller can fix."
     },
+    "configured_provider": {
+      "kind": "gate_function",
+      "intent": "The configured LLM provider, or TranslationUnavailable('not_configured') when LLM_PROVIDER is empty or does not load. Call it instead of get_llm_provider() whenever the caller must tell \"this deployment cannot translate\" from a translation (the translate.text Function does)."
+    },
     "check_bounds": {
       "kind": "gate_function",
       "intent": "Apply TEXT_MAX_CHARS / TEXT_BATCH_MAX_ITEMS / TEXT_BATCH_MAX_CHARS to a list of texts, raising TextTranslationRefused with the code that says which ceiling was hit. Call this before queueing texts for translation in custom code so a caller learns the input is too long before anything is spent on it, rather than after."

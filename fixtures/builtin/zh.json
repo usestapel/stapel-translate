@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "一批最多包含 {max_items} 段文本",
   "error.400.translate.batch_too_long": "这一批文本总长度超过 {max_chars} 个字符",
   "error.400.translate.unsupported_language": "此处未配置语言 {language}",
-  "error.502.translate.provider_unavailable": "翻译服务不可用"
+  "error.502.translate.provider_unavailable": "翻译服务不可用",
+  "error.503.translate.unavailable": "此处不提供机器翻译"
 }

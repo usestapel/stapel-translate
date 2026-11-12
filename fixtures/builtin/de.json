@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "Ein Stapel darf höchstens {max_items} Texte enthalten",
   "error.400.translate.batch_too_long": "Der Stapel umfasst insgesamt mehr als {max_chars} Zeichen",
   "error.400.translate.unsupported_language": "Die Sprache {language} ist hier nicht konfiguriert",
-  "error.502.translate.provider_unavailable": "Der Übersetzungsdienst ist nicht verfügbar"
+  "error.502.translate.provider_unavailable": "Der Übersetzungsdienst ist nicht verfügbar",
+  "error.503.translate.unavailable": "Die maschinelle Übersetzung ist hier nicht verfügbar"
 }

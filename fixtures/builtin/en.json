@@ -271,5 +271,6 @@
   "error.400.translate.batch_too_large": "A batch may hold at most {max_items} texts",
   "error.400.translate.batch_too_long": "The batch holds more than {max_chars} characters in total",
   "error.400.translate.unsupported_language": "Language {language} is not configured here",
-  "error.502.translate.provider_unavailable": "The translation provider is unavailable"
+  "error.502.translate.provider_unavailable": "The translation provider is unavailable",
+  "error.503.translate.unavailable": "Content translation is not available here"
 }
