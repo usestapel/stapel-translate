@@ -1,8 +1,6 @@
 # Changelog
 
-## [Unreleased]
-
-Proposed version: 0.9.0.
+## [0.9.0] — 2026-11-13
 
 ### Added — `translate.text`, content translation as a comm Function
 
