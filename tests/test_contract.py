@@ -52,7 +52,7 @@ DOCS = REPO / "docs"
 TRIAD = ("schema.json", "flows.json", "errors.json")
 #: The fifth artifact (badge-canon §3): docs/llms.txt, rendered from
 #: docs/capabilities.json (+ schema/errors/flows) by stapel_tools.llms_txt.
-ARTIFACTS = TRIAD + ("llms.txt",)
+ARTIFACTS = TRIAD + ("schema.v2.json", "llms.txt",)
 
 #: Must equal LLMS_TXT_BUDGET in the Makefile; the test at the bottom of this
 #: file is what keeps the two from drifting apart.

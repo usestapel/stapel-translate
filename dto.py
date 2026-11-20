@@ -59,7 +59,7 @@ class DashboardStatsResponse:
     """Dashboard translation statistics across all languages.
 
     Attributes:
-        languages: Per-language statistics list.
+        languages: Per-language statistics list. Example: [{"lang": "fr", "name": "French", "total": 350, "verified": 280, "unverified": 70}]
         total_entries: Total translation entries. Example: 350
     """
     languages: List[LanguageStats]

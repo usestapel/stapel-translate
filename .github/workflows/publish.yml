@@ -118,7 +118,7 @@ jobs:
       - name: Install test dependencies
         # stapel-gdpr is a hosted owner of the builtin corpus: its published
         # docs/errors.json is the denominator of tests/test_builtin_fixtures.py.
-        run: pip install pytest pytest-django pytest-cov "stapel-tools>=0.9.1,<1" "stapel-gdpr>=0.5.5"
+        run: pip install pytest pytest-django pytest-cov "stapel-tools>=0.84.0,<1" "stapel-gdpr>=0.5.5"
 
       - name: Tests with coverage
         run: |

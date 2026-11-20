@@ -142,6 +142,7 @@
                   "LLMSingleTranslationResponse": {
                     "value": {
                       "suggestion": "Speichern",
+                      "applied": false,
                       "target_lang": "de",
                       "source_context": {
                         "en": "Save"
@@ -188,6 +189,15 @@
                 "examples": {
                   "DashboardStatsResponse": {
                     "value": {
+                      "languages": [
+                        {
+                          "lang": "fr",
+                          "name": "French",
+                          "total": 350,
+                          "verified": 280,
+                          "unverified": 70
+                        }
+                      ],
                       "total_entries": 350
                     }
                   }
@@ -647,7 +657,9 @@
                         "4:56"
                       ],
                       "order": 10,
-                      "created": true
+                      "created": true,
+                      "updated": false,
+                      "verified": false
                     }
                   }
                 }
@@ -674,7 +686,9 @@
                         "4:56"
                       ],
                       "order": 10,
-                      "created": true
+                      "created": true,
+                      "updated": false,
+                      "verified": false
                     }
                   }
                 }
@@ -1259,7 +1273,8 @@
                       "text": "Hola",
                       "source_language": "en",
                       "target_language": "es",
-                      "provider": "AgentProvider"
+                      "provider": "AgentProvider",
+                      "cached": false
                     }
                   }
                 }
@@ -1568,7 +1583,16 @@
             "items": {
               "$ref": "#/components/schemas/LanguageStats"
             },
-            "description": "Per-language statistics list"
+            "description": "Per-language statistics list",
+            "example": [
+              {
+                "lang": "fr",
+                "name": "French",
+                "total": 350,
+                "verified": 280,
+                "unverified": 70
+              }
+            ]
           },
           "total_entries": {
             "type": "integer",
@@ -1910,12 +1934,14 @@
           "updated": {
             "type": "boolean",
             "nullable": true,
-            "description": "True if an existing entry was modified"
+            "description": "True if an existing entry was modified",
+            "example": false
           },
           "verified": {
             "type": "boolean",
             "nullable": true,
-            "description": "Verification status after upsert"
+            "description": "Verification status after upsert",
+            "example": false
           }
         },
         "required": [
@@ -1966,7 +1992,8 @@
           },
           "applied": {
             "type": "boolean",
-            "description": "Whether the suggestion was auto-applied"
+            "description": "Whether the suggestion was auto-applied",
+            "example": false
           },
           "target_lang": {
             "type": "string",
@@ -2112,27 +2139,33 @@
             "properties": {
               "page": {
                 "type": "integer",
-                "description": "Current page number"
+                "description": "Current page number",
+                "example": 1
               },
               "page_size": {
                 "type": "integer",
-                "description": "Number of items per page"
+                "description": "Number of items per page",
+                "example": 20
               },
               "total_pages": {
                 "type": "integer",
-                "description": "Total number of pages"
+                "description": "Total number of pages",
+                "example": 1
               },
               "total_count": {
                 "type": "integer",
-                "description": "Total number of items"
+                "description": "Total number of items",
+                "example": 1
               },
               "has_next": {
                 "type": "boolean",
-                "description": "Whether there is a next page"
+                "description": "Whether there is a next page",
+                "example": false
               },
               "has_previous": {
                 "type": "boolean",
-                "description": "Whether there is a previous page"
+                "description": "Whether there is a previous page",
+                "example": false
               }
             },
             "required": [
@@ -2150,23 +2183,27 @@
               "min": {
                 "type": "integer",
                 "nullable": true,
-                "description": "Minimum revision in current response"
+                "description": "Minimum revision in current response",
+                "example": 1
               },
               "max": {
                 "type": "integer",
                 "nullable": true,
-                "description": "Maximum revision in current response"
+                "description": "Maximum revision in current response",
+                "example": 1
               },
               "global_max": {
                 "type": "integer",
-                "description": "Global maximum revision in the table"
+                "description": "Global maximum revision in the table",
+                "example": 1
               },
               "deleted_ids": {
                 "type": "array",
                 "items": {
                   "type": "integer"
                 },
-                "description": "IDs of soft-deleted items since min_revision"
+                "description": "IDs of soft-deleted items since min_revision",
+                "example": []
               }
             },
             "required": [
@@ -2304,7 +2341,8 @@
           },
           "cached": {
             "type": "boolean",
-            "description": "Whether every returned text came from the cache"
+            "description": "Whether every returned text came from the cache",
+            "example": false
           }
         },
         "required": [

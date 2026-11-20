@@ -69,7 +69,7 @@ contract-check:
 	cp docs/capabilities.json "$$tmp/docs/capabilities.json"; \
 	$(PYTHON) -m stapel_tools.llms_txt "$$tmp" --out "$$tmp/docs" --budget $(LLMS_TXT_BUDGET) || { rm -rf "$$tmp"; exit 1; }; \
 	rc=0; \
-	for f in schema.json flows.json errors.json llms.txt; do \
+	for f in schema.json schema.v2.json flows.json errors.json llms.txt; do \
 		if ! cmp -s "docs/$$f" "$$tmp/docs/$$f"; then \
 			echo "DRIFT: docs/$$f is stale — run 'make contract' and commit it"; \
 			diff "docs/$$f" "$$tmp/docs/$$f" | head -20; rc=1; \

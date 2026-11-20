@@ -1,8 +1,8 @@
-# stapel-translate 0.9.0
+# stapel-translate 0.9.1
 
 AI-powered content translation: a TranslationEntry/TranslationValue store across a configurable language set, an LLM-routed translate.resolve comm Function with English-fallback, autofill/verification workflows, a staff dashboard (stats, per-language editing, LLM help, export/import, orphan cleanup), a Figma plugin API, and pluggable key collectors (backend error keys, notification templates, project-specific) so keys enter without any module importing another.
 
-Contract: axes 5 · surface 29 · extension points 6 · operations 25 · error codes 49.
+Contract: axes 5 · surface 29 · extension points 6 · operations 25 · error codes 50.
 Generated from docs/capabilities.json by `stapel-llms-txt` — do not edit; drift-gated by `make contract-check`.
 
 ## Configuration axes — what a product switches on
@@ -137,7 +137,7 @@ Paths are relative to `/translate/api/v1/`.
 - GET /dashboard/translations/{id}/ — translate_api_v1_dashboard_translations_retrieve
 - POST /dashboard/translations/{id}/verify/ — translate_api_v1_dashboard_translations_verify_create
 
-## Error codes (49) — the StapelError envelope
+## Error codes (50) — the StapelError envelope
 Render `t(code, params)`; branch UX on the remediation. Localized text lives in docs/errors.<lang>.md, not here.
 - error.400.bad_request [400] fix_input
 - error.400.captcha_invalid [400] retry
@@ -155,6 +155,7 @@ Render `t(code, params)`; branch UX on the remediation. Localized text lives in 
 - error.400.field.required [400] fix_input {field}
 - error.400.field.unique [400] fix_input {field}
 - error.400.invalid_ad_id [400] fix_input
+- error.400.too_many_ids [400] fix_input {requested,limit}
 - error.400.translate.batch_too_large [400] fix_input {max_items}
 - error.400.translate.batch_too_long [400] fix_input {max_chars}
 - error.400.translate.text_required [400] fix_input
@@ -182,7 +183,7 @@ Render `t(code, params)`; branch UX on the remediation. Localized text lives in 
 - error.422.unprocessable_entity [422] wait_and_retry
 - error.423.locked [423] wait_and_retry
 - error.423.verification_locked [423] wait_and_retry
-- error.429.rate_limit [429] wait_and_retry {retry_after_minutes}
+- error.429.rate_limit [429] wait_and_retry {retry_after_display,retry_after,retry_after_minutes}
 - error.429.too_many_requests [429] wait_and_retry
 - error.500.internal [500] contact_support
 - error.502.translate.provider_unavailable [502] retry
